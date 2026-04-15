@@ -19,6 +19,7 @@ const CronogramaPage = lazy(() => import("@/pages/CronogramaPage"));
 const PrevisaoPage = lazy(() => import("@/pages/PrevisaoPage"));
 const InsightsPage = lazy(() => import("@/pages/InsightsPage"));
 const RelatoriosPage = lazy(() => import("@/pages/RelatoriosPage"));
+const PastaMonitorPage = lazy(() => import("@/pages/PastaMonitorPage"));
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ function AuthenticatedApp() {
           <Route path="/previsao" element={<PrevisaoPage />} />
           <Route path="/insights" element={<InsightsPage />} />
           <Route path="/relatorios" element={<RelatoriosPage />} />
+          <Route path="/pasta-sync" element={<PastaMonitorPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
