@@ -71,13 +71,9 @@ export default function FluxoCaixaPage() {
     const to = from + PAGE_SIZE - 1;
     query = query.range(from, to);
 
-    const { data, count, error } = await query;
-    if (error) {
-      toast.error("Erro ao carregar transações: " + error.message);
-    } else {
-      if (data) setTransacoes(data as TransacaoFull[]);
-      if (count !== null) setTotalCount(count);
-    }
+    const { data, count } = await query;
+    if (data) setTransacoes(data as TransacaoFull[]);
+    if (count !== null) setTotalCount(count);
     setLoading(false);
   }, [page, filterTipo, filterCategoria, dateFrom, dateTo, search]);
 

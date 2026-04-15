@@ -72,13 +72,8 @@ export default function ContasBancariasPage() {
       supabase.from("obra_contas_financeiras").select("*").order("created_at", { ascending: true }),
       supabase.from("obra_transacoes_fluxo").select("id, tipo, valor, data, descricao, categoria, conta_id").is("deleted_at", null).neq("conta_id", ""),
     ]);
-    const firstError = contasRes.error ?? transRes.error;
-    if (firstError) {
-      toast.error("Erro ao carregar contas: " + firstError.message);
-    } else {
-      if (contasRes.data) setContas(contasRes.data as Conta[]);
-      if (transRes.data) setTransacoes(transRes.data as Transacao[]);
-    }
+    if (contasRes.data) setContas(contasRes.data as Conta[]);
+    if (transRes.data) setTransacoes(transRes.data as Transacao[]);
     setLoading(false);
   }, []);
 

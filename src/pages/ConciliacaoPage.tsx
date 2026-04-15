@@ -63,7 +63,7 @@ function StatusBadge({ status }: { status: string }) {
 
 export default function ConciliacaoPage() {
   const {
-    movimentacoes, transacoes, conciliacoes, sugestoes, stats, loading, fetchError,
+    movimentacoes, transacoes, conciliacoes, sugestoes, stats, loading,
     fetchAll, runMatching, conciliarManual, desfazerConciliacao,
     marcarDivergente, criarTransacaoDeMov,
   } = useConciliacao();
@@ -154,22 +154,6 @@ export default function ConciliacaoPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (fetchError) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <h1 className="text-2xl font-bold">Conciliação Bancária</h1>
-        <div className="glass-card p-6 flex items-center gap-4 border-destructive/20">
-          <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium">Erro ao carregar dados de conciliação</p>
-            <p className="text-xs text-muted-foreground">{fetchError}</p>
-          </div>
-          <button onClick={fetchAll} className="text-xs text-primary hover:underline">Tentar novamente</button>
-        </div>
       </div>
     );
   }

@@ -66,23 +66,16 @@ export function useDocumentos() {
   const { user } = useAuth();
   const [documentos, setDocumentos] = useState<DocumentoProcessado[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchDocumentos = useCallback(async () => {
     if (!user) return;
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("obra_documentos_processados")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(200);
-    if (error) {
-      setFetchError(error.message);
-      console.error("[useDocumentos.fetch]", error);
-    } else {
-      setDocumentos((data as DocumentoProcessado[]) || []);
-      setFetchError(null);
-    }
+    setDocumentos((data as DocumentoProcessado[]) || []);
     setLoading(false);
   }, [user]);
 
@@ -203,15 +196,8 @@ export function useDocumentos() {
       if (aiErr) throw aiErr;
 
       const confianca = aiData.confianca || 0;
+      // Persistence already handled by the edge function (persistir=true)
       await registrarEvento(docId, "ia_extracao", "sucesso", `Extração Claude concluída (${confianca}%)`);
-
-      // Deduplicação por conteúdo — verifica se já existe transação com mesmo valor/data
-      // ATENÇÃO: checkContentDuplicates pode mudar status para "revisao" e deve ser
-      // chamada APÓS a extração ter sido persistida pela edge function
-      if (aiData && (aiData.valor_total || aiData.data_documento)) {
-        await checkContentDuplicates(docId, aiData, user.id);
-      }
-
       toast.success(`Documento processado via Claude (${confianca}% confiança)`);
     } catch (err: any) {
       await supabase.from("obra_documentos_processados").update({
@@ -319,5 +305,5 @@ export function useDocumentos() {
     duplicados: documentos.filter((d) => d.duplicidade_status !== "unico").length,
   };
 
-  return { documentos, loading, fetchError, stats, uploadEProcessar, reprocessar, aprovarMovimentacao, fetchDocumentos, registrarEvento };
+  return { documentos, loading, stats, uploadEProcessar, reprocessar, aprovarMovimentacao, fetchDocumentos, registrarEvento };
 }

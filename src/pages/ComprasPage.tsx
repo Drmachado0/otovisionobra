@@ -64,15 +64,13 @@ export default function ComprasPage() {
   const [contasFinanceiras, setContasFinanceiras] = useState<{ id: string; nome: string }[]>([]);
 
   const fetchData = useCallback(async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("obra_compras")
       .select("id, fornecedor, descricao, categoria, valor_total, data, status_entrega, forma_pagamento, numero_parcelas, parcelas, observacoes, nf_vinculada")
       .is("deleted_at", null)
       .order("data", { ascending: false })
       .limit(500);
-    if (error) {
-      toast.error("Erro ao carregar compras: " + error.message);
-    } else if (data) {
+    if (data) {
       setCompras(data.map((c: any) => ({
         ...c,
         parcelas: parseParcelas(c.parcelas),

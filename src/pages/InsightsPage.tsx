@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
-import { useObraConfig } from "@/hooks/useObraConfig";
 import { formatCurrency } from "@/lib/formatters";
 import {
   Lightbulb,
@@ -24,29 +23,23 @@ interface Insight {
 }
 
 export default function InsightsPage() {
-  const { config } = useObraConfig();
-  const orcamento = config.orcamento_total;
+  const [orcamento, setOrcamento] = useState(0);
   const [transacoes, setTransacoes] = useState<any[]>([]);
   const [etapas, setEtapas] = useState<any[]>([]);
   const [comissoes, setComissoes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    const [transRes, etapasRes, comRes] = await Promise.all([
+    const [configRes, transRes, etapasRes, comRes] = await Promise.all([
+      supabase.from("obra_config").select("orcamento_total").limit(1).maybeSingle(),
       supabase.from("obra_transacoes_fluxo").select("tipo, valor, categoria, data").is("deleted_at", null),
       supabase.from("obra_cronograma").select("nome, custo_previsto, custo_real, status, percentual_conclusao, fim_previsto"),
       supabase.from("obra_comissao_pagamentos").select("valor, pago").is("deleted_at", null),
     ]);
-    const firstError = transRes.error ?? etapasRes.error ?? comRes.error;
-    if (firstError) {
-      setFetchError(firstError.message);
-    } else {
-      if (transRes.data) setTransacoes(transRes.data);
-      if (etapasRes.data) setEtapas(etapasRes.data);
-      if (comRes.data) setComissoes(comRes.data);
-      setFetchError(null);
-    }
+    if (configRes.data) setOrcamento(Number(configRes.data.orcamento_total) || 0);
+    if (transRes.data) setTransacoes(transRes.data);
+    if (etapasRes.data) setEtapas(etapasRes.data);
+    if (comRes.data) setComissoes(comRes.data);
     setLoading(false);
   }, []);
 
@@ -138,24 +131,6 @@ export default function InsightsPage() {
       <div className="space-y-6 animate-slide-in">
         <div className="h-7 w-52 rounded bg-muted animate-pulse" />
         {Array.from({ length: 4 }).map((_, i) => <div key={i} className="glass-card p-5 h-20 animate-pulse" />)}
-      </div>
-    );
-  }
-
-  if (fetchError) {
-    return (
-      <div className="space-y-6 animate-slide-in">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Lightbulb className="w-6 h-6 text-primary" /> Centro de Inteligência
-        </h1>
-        <div className="glass-card p-6 flex items-center gap-4 border-destructive/20">
-          <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium">Erro ao carregar dados</p>
-            <p className="text-xs text-muted-foreground">{fetchError}</p>
-          </div>
-          <button onClick={fetchData} className="text-xs text-primary hover:underline">Tentar novamente</button>
-        </div>
       </div>
     );
   }

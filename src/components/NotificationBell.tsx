@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Bell, Check, AlertTriangle, Info, ShoppingCart } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
-import { formatRelativeDate } from "@/lib/formatters";
 
 const ICON_MAP: Record<string, React.ReactNode> = {
   alerta: <AlertTriangle className="w-4 h-4 text-warning" />,
@@ -27,6 +26,16 @@ export default function NotificationBell() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  const formatTimeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "agora";
+    if (mins < 60) return `${mins}min`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+  };
 
   return (
     <div ref={ref} className="relative">
@@ -75,7 +84,7 @@ export default function NotificationBell() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{n.titulo}</p>
                       <p className="text-xs text-muted-foreground line-clamp-2">{n.mensagem}</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">{formatRelativeDate(n.created_at)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">{formatTimeAgo(n.created_at)}</p>
                     </div>
                     {n.status === "nao_lida" && (
                       <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />

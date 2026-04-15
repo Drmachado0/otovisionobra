@@ -59,15 +59,11 @@ export default function CronogramaPage() {
   const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("obra_cronograma")
       .select("*")
       .order("inicio_previsto", { ascending: true });
-    if (error) {
-      toast.error("Erro ao carregar cronograma: " + error.message);
-    } else if (data) {
-      setEtapas(data as unknown as Etapa[]);
-    }
+    if (data) setEtapas(data as unknown as Etapa[]);
     setLoading(false);
   }, []);
 

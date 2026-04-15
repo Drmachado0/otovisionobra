@@ -5,7 +5,8 @@ import { formatCurrency } from "@/lib/formatters";
 import { Percent, CheckCircle, Clock, DollarSign, TrendingUp, Calendar } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import ComissaoDetailDrawer, { parseObservacoes } from "@/components/ComissaoDetailDrawer";
-import { getPercentualComissao } from "@/services/obraConfig";
+
+const PERCENTUAL_COMISSAO = 8;
 
 interface ComissaoRow {
   id: string;
@@ -40,21 +41,18 @@ export default function ComissaoPage() {
   const [selected, setSelected] = useState<ComissaoRow | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "pago" | "pendente">("todos");
-  const [percentualComissao, setPercentualComissao] = useState(8);
 
   const fetchData = useCallback(async () => {
-    const [transRes, comRes, perc] = await Promise.all([
+    const [transRes, comRes] = await Promise.all([
       supabase.from("obra_transacoes_fluxo").select("tipo, valor").eq("tipo", "Saída").is("deleted_at", null),
       supabase.from("obra_comissao_pagamentos")
         .select("id, mes, valor, pago, data_pagamento, observacoes, auto, categoria, fornecedor, forma_pagamento, transacao_id, created_at")
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
-      getPercentualComissao(),
     ]);
 
     if (transRes.data) setTotalGasto(transRes.data.reduce((s, t) => s + Number(t.valor), 0));
     if (comRes.data) setComissoes(comRes.data as ComissaoRow[]);
-    setPercentualComissao(perc);
     setLoading(false);
   }, []);
 
@@ -62,7 +60,7 @@ export default function ComissaoPage() {
   useRealtimeSubscription("obra_transacoes_fluxo", fetchData);
   useRealtimeSubscription("obra_comissao_pagamentos", fetchData);
 
-  const comissaoTotal = totalGasto * (percentualComissao / 100);
+  const comissaoTotal = totalGasto * (PERCENTUAL_COMISSAO / 100);
   const comissaoPaga = comissoes.filter(c => c.pago).reduce((s, c) => s + Number(c.valor), 0);
   const comissaoPendente = comissaoTotal - comissaoPaga;
 
@@ -93,7 +91,7 @@ export default function ComissaoPage() {
     <div className="space-y-6 animate-slide-in">
       <div className="page-header">
         <h1 className="text-2xl font-bold">Comissão</h1>
-        <p className="text-sm text-muted-foreground">Comissão do construtor — {percentualComissao}% sobre gastos</p>
+        <p className="text-sm text-muted-foreground">Comissão do construtor — {PERCENTUAL_COMISSAO}% sobre gastos</p>
       </div>
 
       {/* KPIs */}
@@ -150,7 +148,7 @@ export default function ComissaoPage() {
             {filtered.map((c, i) => {
               const parsed = parseObservacoes(c.observacoes);
               const displayFornecedor = c.fornecedor || parsed.fornecedor;
-              const valorBase = Number(c.valor) / (percentualComissao / 100);
+              const valorBase = Number(c.valor) / (PERCENTUAL_COMISSAO / 100);
 
               return (
                 <div

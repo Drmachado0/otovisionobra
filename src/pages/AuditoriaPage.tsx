@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
-import { formatDateTime } from "@/lib/formatters";
-import { History, Plus, Edit, Trash2, Search, Filter, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
+import { History, Plus, Edit, Trash2, Search, Filter } from "lucide-react";
 import { SkeletonTable } from "@/components/SkeletonCard";
 
 interface AuditLog {
@@ -39,30 +38,19 @@ const TABELA_LABELS: Record<string, string> = {
 export default function AuditoriaPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterTabela, setFilterTabela] = useState("todos");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
-  const PAGE_SIZE = 100;
 
   const fetchLogs = useCallback(async () => {
-    const from = page * PAGE_SIZE;
-    const { data, count, error } = await supabase
+    const { data } = await supabase
       .from("obra_audit_log")
-      .select("*", { count: "exact" })
+      .select("*")
       .order("created_at", { ascending: false })
-      .range(from, from + PAGE_SIZE - 1);
-    if (error) {
-      setFetchError(error.message);
-    } else {
-      if (data) setLogs(data as AuditLog[]);
-      if (count !== null) setTotalCount(count);
-      setFetchError(null);
-    }
+      .limit(200);
+    if (data) setLogs(data as AuditLog[]);
     setLoading(false);
-  }, [page]);
+  }, []);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
   useRealtimeSubscription("obra_audit_log", fetchLogs);
@@ -76,25 +64,10 @@ export default function AuditoriaPage() {
     return matchSearch && matchTabela;
   });
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-
-  if (fetchError) {
-    return (
-      <div className="space-y-6 animate-slide-in">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <History className="w-6 h-6 text-primary" /> Auditoria
-        </h1>
-        <div className="glass-card p-6 flex items-center gap-4 border-destructive/20">
-          <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium">Erro ao carregar auditoria</p>
-            <p className="text-xs text-muted-foreground">{fetchError}</p>
-          </div>
-          <button onClick={fetchLogs} className="text-xs text-primary hover:underline">Tentar novamente</button>
-        </div>
-      </div>
-    );
-  }
+  const formatDateTime = (dt: string) => {
+    const d = new Date(dt);
+    return d.toLocaleDateString("pt-BR") + " " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  };
 
   return (
     <div className="space-y-6 animate-slide-in">
@@ -186,31 +159,6 @@ export default function AuditoriaPage() {
               )}
             </button>
           ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-2">
-          <p className="text-xs text-muted-foreground">
-            {totalCount} registros · página {page + 1} de {totalPages}
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="p-1.5 rounded-md border border-border disabled:opacity-40 hover:bg-accent transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1}
-              className="p-1.5 rounded-md border border-border disabled:opacity-40 hover:bg-accent transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
         </div>
       )}
     </div>
