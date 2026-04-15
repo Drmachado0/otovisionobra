@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, ShoppingCart, FileText, Percent,
   Menu, X, Building2, History, Calendar, TrendingUp, Lightbulb,
-  BarChart3, FolderSync, Landmark, ChevronRight,
+  BarChart3, FolderSync, Landmark, ChevronRight, Wallet,
 } from "lucide-react";
 import UserMenu from "@/components/UserMenu";
 import NotificationBell from "@/components/NotificationBell";
@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/cronograma", label: "Cronograma", icon: Calendar },
   { path: "/fluxo", label: "Fluxo de Caixa", icon: ArrowLeftRight, allowedRoles: ["admin", "financeiro"] },
+  { path: "/contas", label: "Contas", icon: Wallet, allowedRoles: ["admin", "financeiro"] },
   { path: "/compras", label: "Compras", icon: ShoppingCart, allowedRoles: ["admin", "financeiro"] },
   { path: "/previsao", label: "Previsão", icon: TrendingUp, allowedRoles: ["admin", "financeiro"] },
   { path: "/insights", label: "Insights", icon: Lightbulb },
