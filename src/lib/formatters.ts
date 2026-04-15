@@ -14,6 +14,13 @@ export function formatDate(date: string): string {
   }
 }
 
+export const CATEGORIAS_PADRAO = [
+  "Acabamento", "Administrativo", "Alimentação", "Aporte", "Elétrica",
+  "Equipamento", "Equipamentos Médicos", "Estrutura", "Hidráulica",
+  "Madeiras", "Mão de Obra", "Materiais de Construção", "Mobiliário",
+  "Serviço", "TI", "Tijolos", "Transporte", "Outro",
+];
+
 export function formatPercent(value: number): string {
   return `${value.toFixed(1)}%`;
 }

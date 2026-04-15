@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate, CATEGORIAS_PADRAO } from "@/lib/formatters";
 import { Plus, Search, Package, Truck, Clock, RefreshCw, CreditCard, Filter } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -365,7 +365,7 @@ export default function ComprasPage() {
               <div>
                 <Label className="text-xs text-muted-foreground">Categoria</Label>
                 <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1">
-                  <option>Material</option><option>Mão de Obra</option><option>Equipamento</option><option>Serviço</option><option>Assinatura</option><option>Outro</option>
+                  {CATEGORIAS_PADRAO.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
