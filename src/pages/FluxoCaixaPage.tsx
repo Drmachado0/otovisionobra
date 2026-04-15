@@ -29,6 +29,7 @@ const CATEGORIAS = [
 ];
 
 export default function FluxoCaixaPage() {
+  const { user } = useAuth();
   const [transacoes, setTransacoes] = useState<Transacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -67,6 +68,7 @@ export default function FluxoCaixaPage() {
     }
     setSaving(true);
     const { error } = await supabase.from("obra_transacoes_fluxo").insert({
+      user_id: user!.id,
       tipo: form.tipo,
       valor: Number(form.valor),
       data: form.data,
@@ -77,7 +79,7 @@ export default function FluxoCaixaPage() {
       recorrencia: "Única",
       referencia: "",
       conta_id: "",
-    });
+    } as any);
     setSaving(false);
     if (error) {
       toast.error("Erro ao salvar: " + error.message);
