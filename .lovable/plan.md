@@ -1,122 +1,100 @@
 
-## Diagnóstico
 
-O problema está na própria tela `src/pages/LeitorIAPage.tsx`:
+## Plan: Design System Overhaul + Transaction Detail Enhancement
 
-- O botão só fica realmente funcional quando existe texto no `textarea`:
-  `disabled={loading || !texto.trim()}`
-- Quando o usuário envia PDF/imagem, `handleFileUpload` apenas salva o arquivo em `file` e mostra um toast antigo; ele não preenche `texto` e não chama a IA.
-- Nas evidências do preview, não houve requisição de rede para a function ao clicar, o que confirma que o fluxo atual nem chega a disparar processamento.
-- Essa página ainda usa o fluxo antigo `processar-documento` (texto puro), enquanto o projeto já possui o fluxo novo `processar-documento-ia` + `useDocumentos`, com suporte a PDF/imagem/CSV, persistência e deduplicação.
+This is a comprehensive improvement covering two areas: (1) upgrading the visual design system across all pages and (2) adding detailed transaction views with more information.
 
-## Plano de correção
+### Current Issues Identified
 
-### 1. Trocar o Leitor IA para o pipeline atual de documentos
-Atualizar `LeitorIAPage.tsx` para usar o fluxo moderno já existente no projeto, em vez do handler legado baseado só em texto.
+- **Transactions show minimal info**: only type, date, description, category, value. Missing: forma_pagamento, observacoes, origem_tipo, conciliado status, conta_id, recorrencia
+- **No transaction detail view**: clicking a row does nothing -- no drawer/modal with full info
+- **No edit/delete on transactions**: users can only add, not modify
+- **Inconsistent component usage**: some pages use raw HTML inputs/selects, others use shadcn components (Input, Select, Dialog)
+- **No micro-interactions or hover states** on cards
+- **Tables lack row click actions** across all modules
+- **No pagination** on any list
+- **Header is underutilized**: no breadcrumb, no page context
 
-Implementação:
-- Se houver arquivo selecionado, processar pelo fluxo de `processar-documento-ia`.
-- Se houver apenas texto colado, reutilizar o mesmo pipeline criando um `.txt` temporário em memória ou chamando a mesma function com `texto`.
-- Remover a dependência do `processar-documento` nessa tela para evitar dois comportamentos diferentes no produto.
+### Changes
 
-### 2. Corrigir a lógica do botão
-Ajustar a regra do CTA para refletir o uso real:
+#### 1. Enhanced Design System (CSS + Tailwind)
+**File: `src/index.css`**
+- Add subtle gradient backgrounds on page headers
+- Add `@keyframes fade-in-up` for staggered card animations
+- Add `.glass-card-interactive` variant with scale transform on hover
+- Improve stat-card styles with subtle inner glow
+- Add `.badge-*` utility classes for consistent status badges
+- Add `.table-row-interactive` for hover/click feedback on table rows
 
-- Habilitar o botão quando existir **arquivo OU texto**
-- Desabilitar apenas quando não houver nenhuma entrada
-- Exibir loading real durante o envio
-- Melhorar feedback visual do estado desabilitado para não parecer “clicável sem ação”
+**File: `tailwind.config.ts`**
+- Add `fade-in-up` animation with staggered delays
+- Add `scale-in` keyframe for modals/dialogs
 
-### 3. Atualizar o upload e a UX da tela
-O upload atual está desatualizado para o escopo real do sistema.
+#### 2. Transaction Detail Drawer
+**New file: `src/components/TransacaoDetailDrawer.tsx`**
+- Full-width Sheet (drawer) showing all transaction fields
+- Fields displayed: tipo, valor, data, categoria, descricao, forma_pagamento, observacoes, origem_tipo, conciliado status, recorrencia, conta, created_at
+- Origin badge (manual, IA, compra, conciliacao)
+- Conciliation status indicator
+- Edit button that toggles inline editing
+- Soft-delete button with ConfirmDialog
 
-Ajustes:
-- Aceitar também `CSV` e `WEBP`, alinhando com o backend atual
-- Remover o toast “cole o texto manualmente por enquanto” para PDF/imagem, porque isso contradiz a arquitetura já implementada
-- Mostrar instrução clara: “Envie arquivo ou cole texto”
-- Opcionalmente auto-preencher o texto apenas para `.txt/.csv`, mantendo arquivo binário no fluxo de IA
+#### 3. FluxoCaixaPage Improvements
+**File: `src/pages/FluxoCaixaPage.tsx`**
+- Fetch ALL fields from `obra_transacoes_fluxo` (forma_pagamento, observacoes, origem_tipo, conciliado, recorrencia, conta_id, created_at)
+- Add `forma_pagamento` column to table
+- Add `origem` badge column (Manual, IA, Compra, Conciliacao)
+- Clickable rows open TransacaoDetailDrawer
+- Add date range filter (inicio/fim)
+- Add category filter dropdown
+- Add pagination (50 per page)
+- Use shadcn Dialog instead of raw modal for new transaction form
+- Add edit capability via the drawer
 
-### 4. Mapear o retorno novo para a UI existente
-A UI da direita hoje espera o formato antigo:
-- `fornecedor`
-- `valor`
-- `data`
-- `tipo`
-- `descricao`
-- `categoria`
+#### 4. ComprasPage Improvements
+**File: `src/pages/ComprasPage.tsx`**
+- Clickable rows open detail view showing: fornecedor, itens, parcelas, NF vinculada, observacoes, data_entrega_prevista/real
+- Add `forma_pagamento` column
+- Use shadcn components consistently (Dialog, Select, Input)
 
-Mas a Claude function retorna algo como:
-- `fornecedor_ou_origem`
-- `valor_total`
-- `data_documento`
-- `tipo_documento`
-- `descricao`
-- `categoria_sugerida`
+#### 5. DashboardPage Polish
+**File: `src/pages/DashboardPage.tsx`**
+- Add staggered animation on KPI cards (delay per card)
+- Recent transactions show forma_pagamento and origem badge
+- Clickable recent transactions open detail drawer
+- Add "Ver todos" link to fluxo page
 
-Plano:
-- Criar um mapeamento simples do payload novo para o estado `dados`
-- Manter a experiência atual de edição/salvamento sem quebrar o formulário
+#### 6. Consistent Shadcn Usage Across All Pages
+- Replace raw `<select>`, `<input>`, `<button>` in FluxoCaixaPage, ComprasPage, LeitorIAPage, LoginPage with shadcn `Select`, `Input`, `Button`
+- Use `Sheet` for detail views, `Dialog` for creation forms
+- Use `Badge` for status indicators everywhere
 
-Exemplo de normalização:
-```ts
-{
-  fornecedor: ai.fornecedor_ou_origem ?? "",
-  valor: ai.valor_total ?? 0,
-  data: ai.data_documento ?? "",
-  tipo: ai.tipo_documento ?? "Outro",
-  descricao: ai.descricao ?? "",
-  categoria: ai.categoria_sugerida ?? "Outro",
-}
-```
+#### 7. AppLayout Polish
+**File: `src/components/AppLayout.tsx`**
+- Add breadcrumb showing current page name in header
+- Add subtle border-bottom glow on active nav item
+- Smoother mobile menu animation (slide-in from left)
 
-### 5. Reaproveitar persistência e deduplicação existentes
-Para não duplicar regra de negócio no frontend:
+### Technical Details
 
-- Reusar `useDocumentos.ts` sempre que possível
-- Aproveitar:
-  - hash do arquivo
-  - registro em `obra_documentos_processados`
-  - eventos em `obra_eventos_processamento`
-  - persistência de `obra_movimentacoes_extraidas`
-  - deduplicação já implementada na edge function
+- Transaction detail drawer receives a transaction ID, fetches full row including observacoes/origem_tipo
+- Edit uses `supabase.from("obra_transacoes_fluxo").update(...)` 
+- Soft-delete sets `deleted_at = now()`
+- No database migration needed -- all fields already exist in the schema
+- Pagination uses `.range(from, to)` on Supabase queries
+- All pages get consistent input styling via shared CSS utility classes
 
-Se necessário, vou ajustar `useDocumentos` para retornar também o payload processado ou buscar o documento recém-processado por `docId`, permitindo que o `LeitorIAPage` continue exibindo os dados extraídos à direita.
+### Files to Create
+- `src/components/TransacaoDetailDrawer.tsx`
 
-## Arquivos a ajustar
+### Files to Edit
+- `src/index.css` -- design system utilities
+- `tailwind.config.ts` -- new animations
+- `src/pages/FluxoCaixaPage.tsx` -- full rewrite with details, filters, pagination
+- `src/pages/ComprasPage.tsx` -- shadcn components, detail view
+- `src/pages/DashboardPage.tsx` -- animations, clickable transactions
+- `src/components/AppLayout.tsx` -- breadcrumb, nav polish
+- `src/pages/LoginPage.tsx` -- shadcn inputs
+- `src/pages/ComissaoPage.tsx` -- consistent components
+- `src/pages/LeitorIAPage.tsx` -- consistent components
 
-- `src/pages/LeitorIAPage.tsx`
-  - corrigir botão
-  - trocar handler antigo
-  - alinhar tipos aceitos
-  - mapear retorno novo
-- `src/hooks/useDocumentos.ts`
-  - expor/reutilizar o processamento para o Leitor IA sem duplicação
-- Sem mudança obrigatória na edge function, a princípio
-  - o problema principal está no frontend e no uso do fluxo antigo
-
-## QA planejado
-
-Vou validar estes cenários após implementar:
-
-1. JPG/PNG/PDF selecionado com textarea vazio:
-   - botão habilita
-   - loading aparece
-   - requisição é enviada
-   - dados extraídos aparecem
-
-2. TXT/CSV:
-   - processa normalmente
-
-3. Texto colado sem arquivo:
-   - processa normalmente
-
-4. Arquivo duplicado:
-   - erro claro de duplicidade
-
-5. Erro da IA:
-   - toast visível e estado volta ao normal
-
-6. Salvamento após extração:
-   - continua funcionando
-
-7. Teste end-to-end no fluxo da tela `/leitor-ia`, inclusive em viewport menor
