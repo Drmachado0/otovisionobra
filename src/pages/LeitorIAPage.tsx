@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/formatters";
 import { Upload, FileText, Check, Edit, Loader2 } from "lucide-react";
 import { toast } from "sonner";

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
   Plus,
