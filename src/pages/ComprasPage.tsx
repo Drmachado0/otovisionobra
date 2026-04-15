@@ -58,7 +58,10 @@ export default function ComprasPage() {
     numero_parcelas: "3",
     periodicidade: "Mensal",
     observacoes: "",
+    conta_id: "",
   });
+
+  const [contasFinanceiras, setContasFinanceiras] = useState<{ id: string; nome: string }[]>([]);
 
   const fetchData = useCallback(async () => {
     const { data } = await supabase

@@ -324,6 +324,13 @@ export default function FluxoCaixaPage() {
               </select>
             </div>
             <div>
+              <Label className="text-xs text-muted-foreground">Conta</Label>
+              <select value={form.conta_id} onChange={e => setForm(f => ({ ...f, conta_id: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-1">
+                <option value="">Sem conta vinculada</option>
+                {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
+            <div>
               <Label className="text-xs text-muted-foreground">Observações</Label>
               <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} className="mt-1" />
             </div>
