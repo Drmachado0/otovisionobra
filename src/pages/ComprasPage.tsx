@@ -81,13 +81,18 @@ export default function ComprasPage() {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    supabase.from("obra_contas_financeiras").select("id, nome").eq("ativa", true).then(({ data }) => {
+      if (data) setContasFinanceiras(data);
+    });
+  }, []);
   useRealtimeSubscription("obra_compras", fetchData);
 
   const resetForm = () => setForm({
     fornecedor: "", descricao: "", categoria: "Material", valor_total: "",
     data: new Date().toISOString().split("T")[0], status_entrega: "Pedido",
     forma_pagamento: "PIX", tipo_compra: "Única", numero_parcelas: "3",
-    periodicidade: "Mensal", observacoes: "",
+    periodicidade: "Mensal", observacoes: "", conta_id: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
