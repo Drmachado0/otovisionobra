@@ -878,11 +878,51 @@ export type Database = {
         }
         Relationships: []
       }
+      obra_audit_log: {
+        Row: {
+          acao: string
+          created_at: string
+          dados_anteriores: Json | null
+          dados_novos: Json | null
+          id: string
+          ip_address: string | null
+          registro_id: string
+          tabela: string
+          user_email: string
+          user_id: string
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          id?: string
+          ip_address?: string | null
+          registro_id?: string
+          tabela: string
+          user_email?: string
+          user_id: string
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          dados_anteriores?: Json | null
+          dados_novos?: Json | null
+          id?: string
+          ip_address?: string | null
+          registro_id?: string
+          tabela?: string
+          user_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       obra_comissao_pagamentos: {
         Row: {
           auto: boolean
           created_at: string
           data_pagamento: string
+          deleted_at: string | null
           id: string
           mes: string
           observacoes: string
@@ -895,6 +935,7 @@ export type Database = {
           auto?: boolean
           created_at?: string
           data_pagamento?: string
+          deleted_at?: string | null
           id?: string
           mes?: string
           observacoes?: string
@@ -907,6 +948,7 @@ export type Database = {
           auto?: boolean
           created_at?: string
           data_pagamento?: string
+          deleted_at?: string | null
           id?: string
           mes?: string
           observacoes?: string
@@ -962,6 +1004,7 @@ export type Database = {
           data: string
           data_entrega_prevista: string
           data_entrega_real: string
+          deleted_at: string | null
           descricao: string
           forma_pagamento: string
           fornecedor: string
@@ -986,6 +1029,7 @@ export type Database = {
           data?: string
           data_entrega_prevista?: string
           data_entrega_real?: string
+          deleted_at?: string | null
           descricao?: string
           forma_pagamento?: string
           fornecedor?: string
@@ -1010,6 +1054,7 @@ export type Database = {
           data?: string
           data_entrega_prevista?: string
           data_entrega_real?: string
+          deleted_at?: string | null
           descricao?: string
           forma_pagamento?: string
           fornecedor?: string
@@ -1243,6 +1288,7 @@ export type Database = {
           cnpj: string
           conta: string
           created_at: string
+          deleted_at: string | null
           email: string
           endereco: string
           especialidade: string
@@ -1264,6 +1310,7 @@ export type Database = {
           cnpj?: string
           conta?: string
           created_at?: string
+          deleted_at?: string | null
           email?: string
           endereco?: string
           especialidade?: string
@@ -1285,6 +1332,7 @@ export type Database = {
           cnpj?: string
           conta?: string
           created_at?: string
+          deleted_at?: string | null
           email?: string
           endereco?: string
           especialidade?: string
@@ -1430,6 +1478,7 @@ export type Database = {
           data_emissao: string
           data_pagamento: string
           data_vencimento: string
+          deleted_at: string | null
           desconto: number
           descricao: string
           etapa_cronograma: string
@@ -1462,6 +1511,7 @@ export type Database = {
           data_emissao?: string
           data_pagamento?: string
           data_vencimento?: string
+          deleted_at?: string | null
           desconto?: number
           descricao?: string
           etapa_cronograma?: string
@@ -1494,6 +1544,7 @@ export type Database = {
           data_emissao?: string
           data_pagamento?: string
           data_vencimento?: string
+          deleted_at?: string | null
           desconto?: number
           descricao?: string
           etapa_cronograma?: string
@@ -1517,6 +1568,45 @@ export type Database = {
         }
         Relationships: []
       }
+      obra_notificacoes: {
+        Row: {
+          created_at: string
+          id: string
+          link: string | null
+          mensagem: string
+          prioridade: string
+          read_at: string | null
+          status: string
+          tipo: string
+          titulo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          link?: string | null
+          mensagem?: string
+          prioridade?: string
+          read_at?: string | null
+          status?: string
+          tipo?: string
+          titulo?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          link?: string | null
+          mensagem?: string
+          prioridade?: string
+          read_at?: string | null
+          status?: string
+          tipo?: string
+          titulo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       obra_orcamentos: {
         Row: {
           anexo_id: string
@@ -1525,6 +1615,7 @@ export type Database = {
           conta_id: string
           created_at: string
           data: string
+          deleted_at: string | null
           descricao: string
           forma_pagamento_tipo: string
           fornecedor: string
@@ -1552,6 +1643,7 @@ export type Database = {
           conta_id?: string
           created_at?: string
           data?: string
+          deleted_at?: string | null
           descricao?: string
           forma_pagamento_tipo?: string
           fornecedor?: string
@@ -1579,6 +1671,7 @@ export type Database = {
           conta_id?: string
           created_at?: string
           data?: string
+          deleted_at?: string | null
           descricao?: string
           forma_pagamento_tipo?: string
           fornecedor?: string
@@ -1648,6 +1741,7 @@ export type Database = {
           conta_id: string
           created_at: string
           data: string
+          deleted_at: string | null
           descricao: string
           extrato_arquivo: string | null
           extrato_fit_id: string | null
@@ -1673,6 +1767,7 @@ export type Database = {
           conta_id?: string
           created_at?: string
           data?: string
+          deleted_at?: string | null
           descricao?: string
           extrato_arquivo?: string | null
           extrato_fit_id?: string | null
@@ -1698,6 +1793,7 @@ export type Database = {
           conta_id?: string
           created_at?: string
           data?: string
+          deleted_at?: string | null
           descricao?: string
           extrato_arquivo?: string | null
           extrato_fit_id?: string | null
@@ -2657,6 +2753,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           automation_paused: boolean | null
@@ -2903,6 +3020,17 @@ export type Database = {
           count: number
         }[]
       }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       mark_targets_done: {
         Args: { p_ig_account_id: string; p_target_ids: string[] }
         Returns: number
@@ -2959,7 +3087,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "financeiro" | "construtor" | "visualizador"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3086,6 +3214,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "financeiro", "construtor", "visualizador"],
+    },
   },
 } as const
