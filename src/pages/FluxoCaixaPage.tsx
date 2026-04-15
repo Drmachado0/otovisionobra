@@ -231,7 +231,7 @@ export default function FluxoCaixaPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(t.data)}</td>
-                    <td className="px-4 py-3 font-medium max-w-[200px] truncate">{t.descricao || "-"}</td>
+                    <td className="px-4 py-3 font-medium max-w-[200px] truncate" title={t.descricao || ""}>{t.descricao || "-"}</td>
                     <td className="px-4 py-3">
                       <span className="badge-muted">{t.categoria || "-"}</span>
                     </td>

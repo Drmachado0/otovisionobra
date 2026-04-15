@@ -275,7 +275,7 @@ export default function ContasBancariasPage() {
                             <p className="text-xs text-muted-foreground">{t.data}</p>
                           </div>
                           <span className={`text-sm font-semibold ${t.tipo === "Entrada" ? "text-success" : "text-destructive"}`}>
-                            {t.tipo === "Entrada" ? "+" : "-"}{formatCurrency(Number(t.valor))}
+                            {t.tipo === "Entrada" ? "+" : "-"} {formatCurrency(Number(t.valor))}
                           </span>
                         </div>
                       ))}

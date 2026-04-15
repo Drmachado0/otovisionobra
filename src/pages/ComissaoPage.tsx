@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatMes } from "@/lib/formatters";
 import { Percent, CheckCircle, Clock, DollarSign, TrendingUp, Calendar, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -124,7 +124,7 @@ export default function ComissaoPage() {
           { cls: "stat-card-success", icon: <CheckCircle className="w-4 h-4 text-success" />, label: "Pago", value: formatCurrency(comissaoPaga), color: "text-success" },
           { cls: "stat-card-warning", icon: <Clock className="w-4 h-4 text-warning" />, label: "Pendente", value: formatCurrency(Math.max(comissaoPendente, 0)), color: "text-warning" },
           { cls: "stat-card-primary", icon: <TrendingUp className="w-4 h-4 text-primary" />, label: "Média Mensal", value: formatCurrency(mediaMensal) },
-          { cls: "stat-card-info", icon: <Calendar className="w-4 h-4 text-info" />, label: "Mês Maior", value: mesMaior ? `${mesMaior[0]} (${formatCurrency(mesMaior[1])})` : "—" },
+          { cls: "stat-card-info", icon: <Calendar className="w-4 h-4 text-info" />, label: "Mês Maior", value: mesMaior ? `${formatMes(mesMaior[0])} (${formatCurrency(mesMaior[1])})` : "—" },
         ].map((c, i) => (
           <div key={c.label} className={`${c.cls} p-5 animate-fade-in-up`} style={{ animationDelay: `${i * 80}ms` }}>
             <div className="flex items-center gap-2 mb-2">{c.icon}<span className="text-xs text-muted-foreground uppercase">{c.label}</span></div>
@@ -194,7 +194,7 @@ export default function ComissaoPage() {
                         {displayFornecedor && (
                           <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">{displayFornecedor}</span>
                         )}
-                        {c.mes && <span className="text-[10px] text-muted-foreground/60">· {c.mes}</span>}
+                        {c.mes && <span className="text-[10px] text-muted-foreground/60">· {formatMes(c.mes)}</span>}
                         {c.pago
                           ? <span className="badge-success text-[9px]">Pago</span>
                           : <span className="badge-warning text-[9px]">Pendente</span>}

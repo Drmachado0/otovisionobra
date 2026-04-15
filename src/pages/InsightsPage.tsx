@@ -34,7 +34,7 @@ export default function InsightsPage() {
       supabase.from("obra_config").select("orcamento_total").limit(1).maybeSingle(),
       supabase.from("obra_transacoes_fluxo").select("tipo, valor, categoria, data").is("deleted_at", null),
       supabase.from("obra_cronograma").select("nome, custo_previsto, custo_real, status, percentual_conclusao, fim_previsto"),
-      supabase.from("obra_comissao_pagamentos").select("valor, pago").is("deleted_at", null),
+      supabase.from("obra_comissao_pagamentos").select("valor, pago").is("deleted_at", null).eq("pago", false),
     ]);
     if (configRes.data) setOrcamento(Number(configRes.data.orcamento_total) || 0);
     if (transRes.data) setTransacoes(transRes.data);
