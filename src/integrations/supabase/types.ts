@@ -1280,6 +1280,124 @@ export type Database = {
         }
         Relationships: []
       }
+      obra_documentos_processados: {
+        Row: {
+          caminho_origem: string
+          confianca_extracao: number
+          created_at: string
+          documento_relacionado_id: string | null
+          duplicidade_score: number
+          duplicidade_status: string
+          hash_arquivo: string
+          id: string
+          motivo_erro: string
+          motivo_revisao: string
+          nome_arquivo: string
+          origem_arquivo: string
+          payload_bruto: Json | null
+          payload_normalizado: Json | null
+          status_processamento: string
+          storage_path: string
+          tipo_arquivo: string
+          tipo_documento: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          caminho_origem?: string
+          confianca_extracao?: number
+          created_at?: string
+          documento_relacionado_id?: string | null
+          duplicidade_score?: number
+          duplicidade_status?: string
+          hash_arquivo?: string
+          id?: string
+          motivo_erro?: string
+          motivo_revisao?: string
+          nome_arquivo: string
+          origem_arquivo?: string
+          payload_bruto?: Json | null
+          payload_normalizado?: Json | null
+          status_processamento?: string
+          storage_path?: string
+          tipo_arquivo?: string
+          tipo_documento?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          caminho_origem?: string
+          confianca_extracao?: number
+          created_at?: string
+          documento_relacionado_id?: string | null
+          duplicidade_score?: number
+          duplicidade_status?: string
+          hash_arquivo?: string
+          id?: string
+          motivo_erro?: string
+          motivo_revisao?: string
+          nome_arquivo?: string
+          origem_arquivo?: string
+          payload_bruto?: Json | null
+          payload_normalizado?: Json | null
+          status_processamento?: string
+          storage_path?: string
+          tipo_arquivo?: string
+          tipo_documento?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_documentos_processados_documento_relacionado_id_fkey"
+            columns: ["documento_relacionado_id"]
+            isOneToOne: false
+            referencedRelation: "obra_documentos_processados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      obra_eventos_processamento: {
+        Row: {
+          created_at: string
+          detalhes: Json | null
+          documento_id: string
+          etapa: string
+          id: string
+          mensagem: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          detalhes?: Json | null
+          documento_id: string
+          etapa?: string
+          id?: string
+          mensagem?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          detalhes?: Json | null
+          documento_id?: string
+          etapa?: string
+          id?: string
+          mensagem?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_eventos_processamento_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "obra_documentos_processados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       obra_fornecedores: {
         Row: {
           agencia: string
@@ -1465,6 +1583,65 @@ export type Database = {
           valor_total_medido?: number
         }
         Relationships: []
+      }
+      obra_movimentacoes_extraidas: {
+        Row: {
+          categoria_sugerida: string
+          created_at: string
+          data_movimentacao: string
+          descricao: string
+          documento_id: string
+          id: string
+          saldo: number | null
+          score_confianca: number
+          score_duplicidade: number
+          status_revisao: string
+          tipo_movimentacao: string
+          transacao_id: string | null
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          categoria_sugerida?: string
+          created_at?: string
+          data_movimentacao?: string
+          descricao?: string
+          documento_id: string
+          id?: string
+          saldo?: number | null
+          score_confianca?: number
+          score_duplicidade?: number
+          status_revisao?: string
+          tipo_movimentacao?: string
+          transacao_id?: string | null
+          user_id: string
+          valor?: number
+        }
+        Update: {
+          categoria_sugerida?: string
+          created_at?: string
+          data_movimentacao?: string
+          descricao?: string
+          documento_id?: string
+          id?: string
+          saldo?: number | null
+          score_confianca?: number
+          score_duplicidade?: number
+          status_revisao?: string
+          tipo_movimentacao?: string
+          transacao_id?: string | null
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_movimentacoes_extraidas_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "obra_documentos_processados"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       obra_notas_fiscais: {
         Row: {
