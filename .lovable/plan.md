@@ -1,40 +1,33 @@
 
 
-## Plan: Módulo de Contas Bancárias
+## Plan: Dados da Obra nas Configurações (com Custo/m² em tempo real)
 
-### Contexto
-A tabela `obra_contas_financeiras` já existe com 3 registros (Caixa Geral, Banco Principal, Cartão Corporativo), campos: `id, user_id, nome, tipo, saldo_inicial, cor, ativa, observacoes`. O campo `conta_id` existe em `obra_transacoes_fluxo` e `obra_compras` mas está vazio em todos os registros. Falta uma UI para gerenciar essas contas e vincular transações.
+### Problema
+A `obra_config` já tem os campos `nome_obra`, `endereco`, `responsavel`, `contato_responsavel`, `area_construida`, `orcamento_total`, `data_inicio`, `data_termino`, mas a página de Configurações não permite editá-los. O valor de `area_construida` (atualmente 658 m²) alimenta o KPI "Custo/m²" no Dashboard, mas não há interface para atualizá-lo.
 
-### Mudanças
+### O que será feito
 
-#### 1. Nova página `ContasBancariasPage.tsx` (`/contas`)
-- **KPIs**: Saldo total (saldo_inicial + entradas - saídas por conta), contas ativas, contas inativas
-- **Lista de contas**: Card por conta com nome, tipo, cor, saldo calculado, badge ativa/inativa
-- **Saldo por conta**: Calculado somando transações vinculadas via `conta_id`
-- **Formulário Nova Conta**: nome, tipo (Caixa/Banco/Cartão de Crédito/Investimento/Poupança), saldo inicial, cor (color picker), observações
-- **Editar/Desativar conta**: inline ou drawer
-- **Ao clicar**: drawer com extrato filtrado (transações daquela conta)
+Adicionar uma seção "Dados da Obra" na `ConfiguracoesPage` com formulário editável para todos os campos de `obra_config`:
 
-#### 2. Integração com Fluxo de Caixa e Compras
-- No formulário de nova transação (FluxoCaixaPage), adicionar select de conta (fetch de `obra_contas_financeiras` ativas)
-- No formulário de nova compra (ComprasPage), adicionar select de conta
-- Salvar `conta_id` ao criar transação/compra
+- **Nome da obra** (text)
+- **Endereço** (text)
+- **Responsável** + Contato (text)
+- **Área construída (m²)** (number) -- atualiza o Custo/m² do dashboard em tempo real via realtime subscription já existente
+- **Orçamento total** (number/currency)
+- **Data início** / **Data término** (date)
+- **Categorias** e **Formas de pagamento** (readonly ou editável)
 
-#### 3. AppLayout -- Nav
-- Adicionar item "Contas" com ícone `Wallet` entre "Fluxo de Caixa" e "Compras", roles: admin, financeiro
-
-#### 4. App.tsx -- Rota
-- Adicionar lazy import e rota `/contas`
+O formulário faz `upsert` na tabela `obra_config` ao salvar. Como o Dashboard já tem `useRealtimeSubscription("obra_config", fetchData)`, qualquer alteração nos dados reflete automaticamente no KPI Custo/m².
 
 ### Arquivos
-| Ação | Arquivo |
-|------|---------|
-| Criar | `src/pages/ContasBancariasPage.tsx` |
-| Editar | `src/components/AppLayout.tsx` -- add nav item |
-| Editar | `src/App.tsx` -- add route |
-| Editar | `src/pages/FluxoCaixaPage.tsx` -- add conta select no form |
-| Editar | `src/pages/ComprasPage.tsx` -- add conta select no form |
 
-### Sem migração necessária
-A tabela `obra_contas_financeiras` já existe com RLS configurado. O campo `conta_id` já existe nas tabelas de transações e compras.
+| Acao | Arquivo |
+|------|---------|
+| Editar | `src/pages/ConfiguracoesPage.tsx` -- adicionar seção "Dados da Obra" com fetch + form + save |
+
+### Detalhes
+- Fetch `obra_config` no `useEffect`, popular state do formulário
+- Botão "Salvar" faz `upsert` com `onConflict: 'user_id'` ou `update` pelo `id`
+- Seção posicionada logo após "Informações do Sistema"
+- Sem migração necessária -- todos os campos já existem
 
