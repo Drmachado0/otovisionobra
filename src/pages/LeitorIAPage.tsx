@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useDocumentos } from "@/hooks/useDocumentos";
 import { formatCurrency } from "@/lib/formatters";
 import { Upload, FileText, Check, Edit, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +17,7 @@ interface DadosExtraidos {
 
 export default function LeitorIAPage() {
   const { user } = useAuth();
+  const { uploadEProcessar } = useDocumentos();
   const [texto, setTexto] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,35 +25,81 @@ export default function LeitorIAPage() {
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const processarTexto = async (conteudo: string) => {
-    if (!conteudo.trim()) {
-      toast.error("Cole ou envie um documento");
-      return;
-    }
+  const hasInput = !!(file || texto.trim());
+
+  const mapAiResponse = (ai: any): DadosExtraidos => ({
+    fornecedor: ai.fornecedor_ou_origem ?? "",
+    valor: ai.valor_total ?? 0,
+    data: ai.data_documento ?? "",
+    tipo: ai.tipo_documento ?? "Outro",
+    descricao: ai.descricao ?? "",
+    categoria: ai.categoria_sugerida ?? "Outro",
+  });
+
+  const processarDocumento = async () => {
+    if (!hasInput || !user) return;
     setLoading(true);
     setDados(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("processar-documento", {
-        body: { texto: conteudo },
-      });
+      if (file) {
+        // Use the modern pipeline: upload + hash + dedup + Claude IA + persistence
+        const isTextFile =
+          file.type === "text/plain" ||
+          file.type === "text/csv" ||
+          file.name.endsWith(".txt") ||
+          file.name.endsWith(".csv");
 
-      console.log("processar-documento response:", { data, error });
+        // For text files, also fill the textarea content
+        let textoParaEnviar = texto.trim();
+        if (isTextFile && !textoParaEnviar) {
+          textoParaEnviar = await file.text();
+        }
 
-      if (error) {
-        const msg = error?.message || "Erro na comunicação com a IA";
-        throw new Error(msg);
+        // Use uploadEProcessar which handles hash, dedup, storage, and Claude call
+        const docId = await uploadEProcessar(file);
+        if (!docId) {
+          // uploadEProcessar already showed toast (duplicate or error)
+          setLoading(false);
+          return;
+        }
+
+        // Fetch the processed document to get extracted data
+        const { data: docData } = await supabase
+          .from("obra_documentos_processados")
+          .select("payload_normalizado, status_processamento, motivo_revisao")
+          .eq("id", docId)
+          .single();
+
+        if (docData?.payload_normalizado) {
+          setDados(mapAiResponse(docData.payload_normalizado));
+          setEditMode(true);
+          if (docData.status_processamento === "revisao") {
+            toast.warning(docData.motivo_revisao || "Documento requer revisão");
+          }
+        } else {
+          toast.info("Documento registrado mas sem dados extraídos. Verifique o status na Pasta Monitor.");
+        }
+      } else if (texto.trim()) {
+        // Text-only: call processar-documento-ia directly with texto
+        const { data: aiData, error } = await supabase.functions.invoke("processar-documento-ia", {
+          body: {
+            texto,
+            nome_arquivo: "texto_colado.txt",
+            tipo_arquivo: "text/plain",
+            persistir: false,
+          },
+        });
+
+        if (error) throw new Error(error.message || "Erro na comunicação com a IA");
+        if (aiData?.error) throw new Error(aiData.error);
+
+        setDados(mapAiResponse(aiData));
+        setEditMode(true);
+        toast.success("Documento processado!");
       }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      setDados(data as DadosExtraidos);
-      setEditMode(true);
-      toast.success("Documento processado!");
     } catch (err: any) {
-      console.error("processar-documento error:", err);
+      console.error("LeitorIA processamento error:", err);
       toast.error("Erro ao processar: " + (err.message || "Tente novamente"));
     } finally {
       setLoading(false);
@@ -63,11 +111,10 @@ export default function LeitorIAPage() {
     if (!f) return;
     setFile(f);
 
-    if (f.type === "text/plain" || f.name.endsWith(".txt")) {
+    // Auto-fill textarea for text files
+    if (f.type === "text/plain" || f.type === "text/csv" || f.name.endsWith(".txt") || f.name.endsWith(".csv")) {
       const text = await f.text();
       setTexto(text);
-    } else {
-      toast.info("Para PDFs e imagens, cole o texto extraído manualmente por enquanto");
     }
   };
 
@@ -76,18 +123,18 @@ export default function LeitorIAPage() {
     const f = e.dataTransfer.files[0];
     if (f) {
       setFile(f);
-      if (f.type === "text/plain") {
+      if (f.type === "text/plain" || f.type === "text/csv") {
         f.text().then(setTexto);
       }
     }
   };
 
   const salvarTransacao = async () => {
-    if (!dados) return;
+    if (!dados || !user) return;
     setSaving(true);
 
     const { error } = await supabase.from("obra_transacoes_fluxo").insert({
-      user_id: user!.id,
+      user_id: user.id,
       tipo: "Saída",
       valor: dados.valor,
       data: dados.data || new Date().toISOString().split("T")[0],
@@ -127,11 +174,11 @@ export default function LeitorIAPage() {
             onDrop={handleDrop}
             className="glass-card p-8 text-center border-2 border-dashed border-border/50 hover:border-primary/30 transition-colors cursor-pointer"
           >
-            <input type="file" id="file-upload" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.txt" onChange={handleFileUpload} />
+            <input type="file" id="file-upload" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv" onChange={handleFileUpload} />
             <label htmlFor="file-upload" className="cursor-pointer">
               <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
               <p className="text-sm font-medium">Arraste um arquivo ou clique para enviar</p>
-              <p className="text-xs text-muted-foreground mt-1">PDF, imagem ou texto</p>
+              <p className="text-xs text-muted-foreground mt-1">PDF, imagem, CSV ou texto</p>
             </label>
             {file && (
               <div className="mt-3 flex items-center justify-center gap-2 text-sm text-primary">
@@ -153,9 +200,9 @@ export default function LeitorIAPage() {
           </div>
 
           <button
-            onClick={() => processarTexto(texto)}
-            disabled={loading || !texto.trim()}
-            className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+            onClick={processarDocumento}
+            disabled={loading || !hasInput}
+            className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
           >
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</> : <><FileText className="w-4 h-4" /> Processar com IA</>}
           </button>
