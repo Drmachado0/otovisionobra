@@ -232,7 +232,7 @@ export default function NotasFiscaisPage() {
       <ConfirmDialog
         open={!!deleteNf}
         title="Arquivar Nota Fiscal"
-        description={`Tem certeza que deseja arquivar a NF ${deleteNf?.numero || ""} de ${deleteNf?.fornecedor || ""}?`}
+        message={`Tem certeza que deseja arquivar a NF ${deleteNf?.numero || ""} de ${deleteNf?.fornecedor || ""}?`}
         onConfirm={handleDelete}
         onCancel={() => setDeleteNf(null)}
       />
