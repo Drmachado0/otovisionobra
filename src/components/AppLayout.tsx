@@ -1,21 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
-  ArrowLeftRight,
-  ShoppingCart,
-  FileText,
-  Percent,
-  Menu,
-  X,
-  Building2,
-  History,
-  Calendar,
-  TrendingUp,
-  Lightbulb,
-  BarChart3,
-  FolderSync,
-  Landmark,
+  LayoutDashboard, ArrowLeftRight, ShoppingCart, FileText, Percent,
+  Menu, X, Building2, History, Calendar, TrendingUp, Lightbulb,
+  BarChart3, FolderSync, Landmark, ChevronRight, Wallet, Settings,
 } from "lucide-react";
 import UserMenu from "@/components/UserMenu";
 import NotificationBell from "@/components/NotificationBell";
@@ -32,6 +20,7 @@ const navItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/cronograma", label: "Cronograma", icon: Calendar },
   { path: "/fluxo", label: "Fluxo de Caixa", icon: ArrowLeftRight, allowedRoles: ["admin", "financeiro"] },
+  { path: "/contas", label: "Contas", icon: Wallet, allowedRoles: ["admin", "financeiro"] },
   { path: "/compras", label: "Compras", icon: ShoppingCart, allowedRoles: ["admin", "financeiro"] },
   { path: "/previsao", label: "Previsão", icon: TrendingUp, allowedRoles: ["admin", "financeiro"] },
   { path: "/insights", label: "Insights", icon: Lightbulb },
@@ -41,7 +30,13 @@ const navItems: NavItem[] = [
   { path: "/comissao", label: "Comissão", icon: Percent, allowedRoles: ["admin", "construtor"] },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, allowedRoles: ["admin", "financeiro"] },
   { path: "/auditoria", label: "Auditoria", icon: History, allowedRoles: ["admin"] },
+  { path: "/configuracoes", label: "Configurações", icon: Settings, allowedRoles: ["admin"] },
 ];
+
+function getPageLabel(pathname: string): string {
+  const item = navItems.find(i => i.path === pathname);
+  return item?.label || "";
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -51,6 +46,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const visibleItems = navItems.filter(
     (item) => !item.allowedRoles || (role && item.allowedRoles.includes(role))
   );
+
+  const currentPage = getPageLabel(location.pathname);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -73,12 +70,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group relative ${
                   active
                     ? "bg-primary/10 text-primary"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 }`}
               >
+                {active && (
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full bg-primary" />
+                )}
                 <item.icon className="w-4 h-4" />
                 {item.label}
               </Link>
@@ -97,14 +97,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden">
         <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
-          <div className="flex items-center gap-2 lg:hidden">
-            <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground p-1">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground p-1 lg:hidden">
               {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <Building2 className="w-5 h-5 text-primary" />
-            <span className="font-bold text-sm">OTOVISION</span>
+            <div className="flex items-center gap-2 lg:hidden">
+              <Building2 className="w-5 h-5 text-primary" />
+              <span className="font-bold text-sm">OTOVISION</span>
+            </div>
+            {/* Breadcrumb */}
+            {currentPage && (
+              <div className="hidden lg:flex items-center gap-1.5 text-sm text-muted-foreground">
+                <span>OTOVISION</span>
+                <ChevronRight className="w-3 h-3" />
+                <span className="text-foreground font-medium">{currentPage}</span>
+              </div>
+            )}
           </div>
-          <div className="hidden lg:block" />
           <div className="flex items-center gap-1">
             <NotificationBell />
             <UserMenu />
@@ -112,18 +121,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {mobileOpen && (
-          <div className="lg:hidden absolute inset-0 z-50 bg-background/95 backdrop-blur-sm pt-14">
+          <div className="lg:hidden absolute inset-0 z-50 bg-background/95 backdrop-blur-sm pt-14 animate-slide-in-left">
             <nav className="px-4 py-4 space-y-1">
-              {visibleItems.map((item) => {
+              {visibleItems.map((item, i) => {
                 const active = location.pathname === item.path;
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
                     onClick={() => setMobileOpen(false)}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium ${
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium animate-fade-in-up ${
                       active ? "bg-primary/10 text-primary" : "text-muted-foreground"
                     }`}
+                    style={{ animationDelay: `${i * 40}ms` }}
                   >
                     <item.icon className="w-5 h-5" />
                     {item.label}

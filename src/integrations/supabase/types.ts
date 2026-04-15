@@ -920,44 +920,64 @@ export type Database = {
       obra_comissao_pagamentos: {
         Row: {
           auto: boolean
+          categoria: string
           created_at: string
           data_pagamento: string
           deleted_at: string | null
+          forma_pagamento: string
+          fornecedor: string
           id: string
           mes: string
           observacoes: string
           pago: boolean
+          transacao_id: string | null
           updated_at: string
           user_id: string
           valor: number
         }
         Insert: {
           auto?: boolean
+          categoria?: string
           created_at?: string
           data_pagamento?: string
           deleted_at?: string | null
+          forma_pagamento?: string
+          fornecedor?: string
           id?: string
           mes?: string
           observacoes?: string
           pago?: boolean
+          transacao_id?: string | null
           updated_at?: string
           user_id: string
           valor?: number
         }
         Update: {
           auto?: boolean
+          categoria?: string
           created_at?: string
           data_pagamento?: string
           deleted_at?: string | null
+          forma_pagamento?: string
+          fornecedor?: string
           id?: string
           mes?: string
           observacoes?: string
           pago?: boolean
+          transacao_id?: string | null
           updated_at?: string
           user_id?: string
           valor?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "obra_comissao_pagamentos_transacao_id_fkey"
+            columns: ["transacao_id"]
+            isOneToOne: false
+            referencedRelation: "obra_transacoes_fluxo"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       obra_composicoes: {
         Row: {

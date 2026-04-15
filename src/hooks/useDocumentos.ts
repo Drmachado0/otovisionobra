@@ -147,87 +147,62 @@ export function useDocumentos() {
     await supabase.from("obra_documentos_processados").update({ storage_path: storagePath, status_processamento: "processando" } as any).eq("id", docId);
     await registrarEvento(docId, "upload_storage", "sucesso", "Arquivo salvo no storage");
 
-    // Read file text
+    // Read file content — text for CSV/TXT, base64 for PDF/images
     let texto = "";
-    if (file.type === "text/plain" || file.type === "text/csv" || file.name.endsWith(".txt") || file.name.endsWith(".csv")) {
+    let base64Content = "";
+    let mediaType = "";
+    const isTextFile = file.type === "text/plain" || file.type === "text/csv" || file.name.endsWith(".txt") || file.name.endsWith(".csv");
+    const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+    const isImage = file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/i.test(file.name);
+
+    if (isTextFile) {
       texto = await file.text();
+      if (texto.trim().length < 5) {
+        await supabase.from("obra_documentos_processados").update({ status_processamento: "erro", motivo_erro: "Arquivo sem conteúdo legível" } as any).eq("id", docId);
+        await registrarEvento(docId, "extracao_texto", "erro", "Conteúdo vazio");
+        await fetchDocumentos();
+        return docId;
+      }
+    } else if (isPdf || isImage) {
+      // Convert to base64 for Claude vision/document processing
+      const buffer = await file.arrayBuffer();
+      base64Content = btoa(
+        new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
+      );
+      mediaType = isPdf ? "application/pdf" : file.type || "image/jpeg";
     } else {
-      // For PDF/images we'd need OCR — for now, prompt user
-      toast.info("Para PDFs e imagens, cole o texto extraído na revisão");
-      await supabase.from("obra_documentos_processados").update({ status_processamento: "revisao", motivo_revisao: "Arquivo requer extração manual de texto (PDF/imagem)" } as any).eq("id", docId);
-      await registrarEvento(docId, "extracao_texto", "revisao", "Tipo de arquivo requer extração manual");
+      toast.info("Formato não suportado. Use PDF, imagem, CSV ou TXT.");
+      await supabase.from("obra_documentos_processados").update({ status_processamento: "revisao", motivo_revisao: "Formato de arquivo não suportado automaticamente" } as any).eq("id", docId);
+      await registrarEvento(docId, "extracao_texto", "revisao", "Formato não suportado: " + file.type);
       await fetchDocumentos();
       return docId;
     }
 
-    if (texto.trim().length < 5) {
-      await supabase.from("obra_documentos_processados").update({ status_processamento: "erro", motivo_erro: "Arquivo sem conteúdo legível" } as any).eq("id", docId);
-      await registrarEvento(docId, "extracao_texto", "erro", "Conteúdo vazio");
-      await fetchDocumentos();
-      return docId;
-    }
-
-    // Call AI
-    await registrarEvento(docId, "ia_extracao", "processando", "Enviando para IA...");
+    // Call Claude AI via edge function
+    await registrarEvento(docId, "ia_extracao", "processando", "Enviando para Claude IA...");
     try {
-      const { data: aiData, error: aiErr } = await supabase.functions.invoke("processar-pasta", {
-        body: { texto, nome_arquivo: file.name, tipo_arquivo: file.type },
+      const { data: aiData, error: aiErr } = await supabase.functions.invoke("processar-documento-ia", {
+        body: {
+          texto: texto || undefined,
+          base64_content: base64Content || undefined,
+          media_type: mediaType || undefined,
+          nome_arquivo: file.name,
+          tipo_arquivo: file.type,
+          documento_id: docId,
+          user_id: user.id,
+          persistir: true,
+        },
       });
       if (aiErr) throw aiErr;
 
       const confianca = aiData.confianca || 0;
-      const statusFinal = confianca >= 70 ? "processado" : "revisao";
-      const motivoRevisao = confianca < 70 ? "Confiança baixa na extração (" + confianca + "%)" : "";
-
-      await supabase.from("obra_documentos_processados").update({
-        status_processamento: statusFinal,
-        tipo_documento: aiData.tipo_documento || "",
-        confianca_extracao: confianca,
-        payload_bruto: aiData,
-        payload_normalizado: aiData,
-        motivo_revisao: motivoRevisao,
-      } as any).eq("id", docId);
-
-      // Save extracted movements
-      const movs = aiData.movimentacoes || [];
-      if (movs.length > 0) {
-        const rows = movs.map((m: any) => ({
-          user_id: user.id,
-          documento_id: docId,
-          data_movimentacao: m.data || new Date().toISOString().split("T")[0],
-          descricao: m.descricao || "",
-          valor: m.valor || 0,
-          tipo_movimentacao: m.tipo || "saida",
-          saldo: m.saldo ?? null,
-          categoria_sugerida: m.categoria_sugerida || "Outro",
-          score_confianca: confianca,
-          status_revisao: statusFinal === "processado" ? "aprovado" : "pendente",
-        }));
-        await supabase.from("obra_movimentacoes_extraidas").insert(rows as any);
-      } else if (aiData.valor_total) {
-        // Single movement doc
-        await supabase.from("obra_movimentacoes_extraidas").insert({
-          user_id: user.id,
-          documento_id: docId,
-          data_movimentacao: aiData.data_documento || new Date().toISOString().split("T")[0],
-          descricao: aiData.descricao || "",
-          valor: aiData.valor_total || 0,
-          tipo_movimentacao: aiData.tipo_movimentacao || "saida",
-          categoria_sugerida: aiData.categoria_sugerida || "Outro",
-          score_confianca: confianca,
-          status_revisao: statusFinal === "processado" ? "aprovado" : "pendente",
-        } as any);
-      }
-
-      // Content dedup check
-      await checkContentDuplicates(docId, aiData, user.id);
-
-      await registrarEvento(docId, "ia_extracao", "sucesso", `Extração concluída (${confianca}%)`);
-      toast.success(`Documento processado (${confianca}% confiança)`);
+      // Persistence already handled by the edge function (persistir=true)
+      await registrarEvento(docId, "ia_extracao", "sucesso", `Extração Claude concluída (${confianca}%)`);
+      toast.success(`Documento processado via Claude (${confianca}% confiança)`);
     } catch (err: any) {
       await supabase.from("obra_documentos_processados").update({
         status_processamento: "erro",
-        motivo_erro: err.message || "Erro na IA",
+        motivo_erro: err.message || "Erro na IA Claude",
       } as any).eq("id", docId);
       await registrarEvento(docId, "ia_extracao", "erro", err.message || "Erro desconhecido");
       toast.error("Erro no processamento IA");
@@ -269,24 +244,19 @@ export function useDocumentos() {
     const doc = documentos.find((d) => d.id === docId);
 
     try {
-      const { data: aiData, error } = await supabase.functions.invoke("processar-pasta", {
-        body: { texto, nome_arquivo: doc?.nome_arquivo || "", tipo_arquivo: doc?.tipo_arquivo || "" },
+      const { data: aiData, error } = await supabase.functions.invoke("processar-documento-ia", {
+        body: {
+          texto,
+          nome_arquivo: doc?.nome_arquivo || "",
+          tipo_arquivo: doc?.tipo_arquivo || "",
+          documento_id: docId,
+          user_id: user.id,
+          persistir: true,
+        },
       });
       if (error) throw error;
 
-      const confianca = aiData.confianca || 0;
-      const statusFinal = confianca >= 70 ? "processado" : "revisao";
-
-      await supabase.from("obra_documentos_processados").update({
-        status_processamento: statusFinal,
-        tipo_documento: aiData.tipo_documento || "",
-        confianca_extracao: confianca,
-        payload_normalizado: aiData,
-        motivo_revisao: confianca < 70 ? "Confiança baixa (" + confianca + "%)" : "",
-        motivo_erro: "",
-      } as any).eq("id", docId);
-
-      await registrarEvento(docId, "reprocessamento", "sucesso", `Reprocessado (${confianca}%)`);
+      await registrarEvento(docId, "reprocessamento", "sucesso", `Reprocessado via Claude (${aiData.confianca || 0}%)`);
       toast.success("Reprocessamento concluído");
     } catch (err: any) {
       await supabase.from("obra_documentos_processados").update({ status_processamento: "erro", motivo_erro: err.message } as any).eq("id", docId);
