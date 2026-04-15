@@ -5,6 +5,10 @@ import { useDocumentos } from "@/hooks/useDocumentos";
 import { formatCurrency } from "@/lib/formatters";
 import { Upload, FileText, Check, Edit, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface DadosExtraidos {
   valor: number;
@@ -43,28 +47,23 @@ export default function LeitorIAPage() {
 
     try {
       if (file) {
-        // Use the modern pipeline: upload + hash + dedup + Claude IA + persistence
         const isTextFile =
           file.type === "text/plain" ||
           file.type === "text/csv" ||
           file.name.endsWith(".txt") ||
           file.name.endsWith(".csv");
 
-        // For text files, also fill the textarea content
         let textoParaEnviar = texto.trim();
         if (isTextFile && !textoParaEnviar) {
           textoParaEnviar = await file.text();
         }
 
-        // Use uploadEProcessar which handles hash, dedup, storage, and Claude call
         const docId = await uploadEProcessar(file);
         if (!docId) {
-          // uploadEProcessar already showed toast (duplicate or error)
           setLoading(false);
           return;
         }
 
-        // Fetch the processed document to get extracted data
         const { data: docData } = await supabase
           .from("obra_documentos_processados")
           .select("payload_normalizado, status_processamento, motivo_revisao")
@@ -78,10 +77,9 @@ export default function LeitorIAPage() {
             toast.warning(docData.motivo_revisao || "Documento requer revisão");
           }
         } else {
-          toast.info("Documento registrado mas sem dados extraídos. Verifique o status na Pasta Monitor.");
+          toast.info("Documento registrado mas sem dados extraídos.");
         }
       } else if (texto.trim()) {
-        // Text-only: call processar-documento-ia directly with texto
         const { data: aiData, error } = await supabase.functions.invoke("processar-documento-ia", {
           body: {
             texto,
@@ -111,7 +109,6 @@ export default function LeitorIAPage() {
     if (!f) return;
     setFile(f);
 
-    // Auto-fill textarea for text files
     if (f.type === "text/plain" || f.type === "text/csv" || f.name.endsWith(".txt") || f.name.endsWith(".csv")) {
       const text = await f.text();
       setTexto(text);
@@ -161,7 +158,7 @@ export default function LeitorIAPage() {
 
   return (
     <div className="space-y-6 animate-slide-in">
-      <div>
+      <div className="page-header">
         <h1 className="text-2xl font-bold">Leitor IA</h1>
         <p className="text-sm text-muted-foreground">Extraia dados de notas fiscais, recibos e extratos</p>
       </div>
@@ -172,7 +169,7 @@ export default function LeitorIAPage() {
           <div
             onDragOver={e => e.preventDefault()}
             onDrop={handleDrop}
-            className="glass-card p-8 text-center border-2 border-dashed border-border/50 hover:border-primary/30 transition-colors cursor-pointer"
+            className="glass-card-interactive p-8 text-center border-2 border-dashed border-border/50 hover:border-primary/30"
           >
             <input type="file" id="file-upload" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.csv" onChange={handleFileUpload} />
             <label htmlFor="file-upload" className="cursor-pointer">
@@ -189,23 +186,24 @@ export default function LeitorIAPage() {
           </div>
 
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Ou cole o texto do documento</label>
-            <textarea
+            <Label className="text-xs text-muted-foreground">Ou cole o texto do documento</Label>
+            <Textarea
               value={texto}
               onChange={e => setTexto(e.target.value)}
               rows={8}
               placeholder="Cole aqui o conteúdo da nota fiscal, recibo ou extrato..."
-              className="w-full px-4 py-3 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none font-mono"
+              className="mt-1 font-mono"
             />
           </div>
 
-          <button
+          <Button
             onClick={processarDocumento}
             disabled={loading || !hasInput}
-            className="w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+            className="w-full gap-2"
+            size="lg"
           >
             {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processando...</> : <><FileText className="w-4 h-4" /> Processar com IA</>}
-          </button>
+          </Button>
         </div>
 
         {/* Output area */}
@@ -220,7 +218,7 @@ export default function LeitorIAPage() {
               <p className="text-sm">Envie ou cole um documento para começar</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 animate-fade-in-up">
               {[
                 { label: "Fornecedor", key: "fornecedor" as const },
                 { label: "Valor", key: "valor" as const },
@@ -230,13 +228,13 @@ export default function LeitorIAPage() {
                 { label: "Descrição", key: "descricao" as const },
               ].map(({ label, key }) => (
                 <div key={key}>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">{label}</label>
+                  <Label className="text-xs text-muted-foreground">{label}</Label>
                   {editMode ? (
-                    <input
+                    <Input
                       type={key === "valor" ? "number" : "text"}
                       value={String(dados[key] ?? "")}
                       onChange={e => setDados(d => d ? { ...d, [key]: key === "valor" ? Number(e.target.value) : e.target.value } : d)}
-                      className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      className="mt-1"
                     />
                   ) : (
                     <p className="text-sm font-medium px-3 py-2">
@@ -247,20 +245,21 @@ export default function LeitorIAPage() {
               ))}
 
               <div className="flex gap-3 pt-2">
-                <button
+                <Button
+                  variant="outline"
                   onClick={() => setEditMode(!editMode)}
-                  className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium hover:bg-accent flex items-center justify-center gap-2 transition-colors"
+                  className="flex-1 gap-2"
                 >
                   <Edit className="w-4 h-4" /> {editMode ? "Visualizar" : "Editar"}
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={salvarTransacao}
                   disabled={saving}
-                  className="flex-1 py-2.5 rounded-lg bg-success text-success-foreground text-sm font-medium hover:bg-success/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
+                  className="flex-1 gap-2 bg-success text-success-foreground hover:bg-success/90"
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   Salvar
-                </button>
+                </Button>
               </div>
             </div>
           )}
