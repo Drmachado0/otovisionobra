@@ -36,11 +36,22 @@ export default function LeitorIAPage() {
         body: { texto: conteudo },
       });
 
-      if (error) throw error;
+      console.log("processar-documento response:", { data, error });
+
+      if (error) {
+        const msg = error?.message || "Erro na comunicação com a IA";
+        throw new Error(msg);
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
       setDados(data as DadosExtraidos);
       setEditMode(true);
       toast.success("Documento processado!");
     } catch (err: any) {
+      console.error("processar-documento error:", err);
       toast.error("Erro ao processar: " + (err.message || "Tente novamente"));
     } finally {
       setLoading(false);
