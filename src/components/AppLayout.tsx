@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Lightbulb,
   BarChart3,
+  FolderSync,
 } from "lucide-react";
 import UserMenu from "@/components/UserMenu";
 import NotificationBell from "@/components/NotificationBell";
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { path: "/previsao", label: "Previsão", icon: TrendingUp, allowedRoles: ["admin", "financeiro"] },
   { path: "/insights", label: "Insights", icon: Lightbulb },
   { path: "/leitor-ia", label: "Leitor IA", icon: FileText, allowedRoles: ["admin", "financeiro"] },
+  { path: "/pasta-sync", label: "Pasta Sync", icon: FolderSync, allowedRoles: ["admin", "financeiro"] },
   { path: "/comissao", label: "Comissão", icon: Percent, allowedRoles: ["admin", "construtor"] },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, allowedRoles: ["admin", "financeiro"] },
   { path: "/auditoria", label: "Auditoria", icon: History, allowedRoles: ["admin"] },
