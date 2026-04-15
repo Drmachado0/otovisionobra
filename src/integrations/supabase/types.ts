@@ -1073,6 +1073,78 @@ export type Database = {
         }
         Relationships: []
       }
+      obra_conciliacoes_bancarias: {
+        Row: {
+          conciliado_em: string | null
+          conciliado_por: string | null
+          created_at: string
+          desfeito_em: string | null
+          desfeito_por: string | null
+          id: string
+          motivo_desfazer: string
+          motivo_matching: string
+          movimentacao_extraida_id: string
+          observacoes: string
+          score_compatibilidade: number
+          status_conciliacao: string
+          tipo_conciliacao: string
+          transacao_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conciliado_em?: string | null
+          conciliado_por?: string | null
+          created_at?: string
+          desfeito_em?: string | null
+          desfeito_por?: string | null
+          id?: string
+          motivo_desfazer?: string
+          motivo_matching?: string
+          movimentacao_extraida_id: string
+          observacoes?: string
+          score_compatibilidade?: number
+          status_conciliacao?: string
+          tipo_conciliacao?: string
+          transacao_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conciliado_em?: string | null
+          conciliado_por?: string | null
+          created_at?: string
+          desfeito_em?: string | null
+          desfeito_por?: string | null
+          id?: string
+          motivo_desfazer?: string
+          motivo_matching?: string
+          movimentacao_extraida_id?: string
+          observacoes?: string
+          score_compatibilidade?: number
+          status_conciliacao?: string
+          tipo_conciliacao?: string
+          transacao_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_conciliacoes_bancarias_movimentacao_extraida_id_fkey"
+            columns: ["movimentacao_extraida_id"]
+            isOneToOne: false
+            referencedRelation: "obra_movimentacoes_extraidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_conciliacoes_bancarias_transacao_id_fkey"
+            columns: ["transacao_id"]
+            isOneToOne: false
+            referencedRelation: "obra_transacoes_fluxo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       obra_config: {
         Row: {
           area_construida: number
@@ -1353,6 +1425,41 @@ export type Database = {
             columns: ["documento_relacionado_id"]
             isOneToOne: false
             referencedRelation: "obra_documentos_processados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      obra_eventos_conciliacao: {
+        Row: {
+          acao: string
+          conciliacao_id: string
+          created_at: string
+          detalhes: Json | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          acao?: string
+          conciliacao_id: string
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          acao?: string
+          conciliacao_id?: string
+          created_at?: string
+          detalhes?: Json | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_eventos_conciliacao_conciliacao_id_fkey"
+            columns: ["conciliacao_id"]
+            isOneToOne: false
+            referencedRelation: "obra_conciliacoes_bancarias"
             referencedColumns: ["id"]
           },
         ]
@@ -1909,6 +2016,54 @@ export type Database = {
           valor_diaria?: number
         }
         Relationships: []
+      }
+      obra_sugestoes_conciliacao: {
+        Row: {
+          created_at: string
+          id: string
+          motivo_matching: string
+          movimentacao_extraida_id: string
+          score_compatibilidade: number
+          status_sugestao: string
+          transacao_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          motivo_matching?: string
+          movimentacao_extraida_id: string
+          score_compatibilidade?: number
+          status_sugestao?: string
+          transacao_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          motivo_matching?: string
+          movimentacao_extraida_id?: string
+          score_compatibilidade?: number
+          status_sugestao?: string
+          transacao_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "obra_sugestoes_conciliacao_movimentacao_extraida_id_fkey"
+            columns: ["movimentacao_extraida_id"]
+            isOneToOne: false
+            referencedRelation: "obra_movimentacoes_extraidas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obra_sugestoes_conciliacao_transacao_id_fkey"
+            columns: ["transacao_id"]
+            isOneToOne: false
+            referencedRelation: "obra_transacoes_fluxo"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       obra_transacoes_fluxo: {
         Row: {
