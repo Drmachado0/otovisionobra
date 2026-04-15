@@ -244,24 +244,19 @@ export function useDocumentos() {
     const doc = documentos.find((d) => d.id === docId);
 
     try {
-      const { data: aiData, error } = await supabase.functions.invoke("processar-pasta", {
-        body: { texto, nome_arquivo: doc?.nome_arquivo || "", tipo_arquivo: doc?.tipo_arquivo || "" },
+      const { data: aiData, error } = await supabase.functions.invoke("processar-documento-ia", {
+        body: {
+          texto,
+          nome_arquivo: doc?.nome_arquivo || "",
+          tipo_arquivo: doc?.tipo_arquivo || "",
+          documento_id: docId,
+          user_id: user.id,
+          persistir: true,
+        },
       });
       if (error) throw error;
 
-      const confianca = aiData.confianca || 0;
-      const statusFinal = confianca >= 70 ? "processado" : "revisao";
-
-      await supabase.from("obra_documentos_processados").update({
-        status_processamento: statusFinal,
-        tipo_documento: aiData.tipo_documento || "",
-        confianca_extracao: confianca,
-        payload_normalizado: aiData,
-        motivo_revisao: confianca < 70 ? "Confiança baixa (" + confianca + "%)" : "",
-        motivo_erro: "",
-      } as any).eq("id", docId);
-
-      await registrarEvento(docId, "reprocessamento", "sucesso", `Reprocessado (${confianca}%)`);
+      await registrarEvento(docId, "reprocessamento", "sucesso", `Reprocessado via Claude (${aiData.confianca || 0}%)`);
       toast.success("Reprocessamento concluído");
     } catch (err: any) {
       await supabase.from("obra_documentos_processados").update({ status_processamento: "erro", motivo_erro: err.message } as any).eq("id", docId);
