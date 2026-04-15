@@ -41,6 +41,8 @@ export default function FluxoCaixaPage() {
   const [selectedTransacao, setSelectedTransacao] = useState<TransacaoFull | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const [contas, setContas] = useState<{ id: string; nome: string }[]>([]);
+
   const [form, setForm] = useState({
     tipo: "Saída",
     valor: "",
@@ -49,6 +51,7 @@ export default function FluxoCaixaPage() {
     descricao: "",
     forma_pagamento: "PIX",
     observacoes: "",
+    conta_id: "",
   });
 
   const fetchData = useCallback(async () => {
@@ -75,6 +78,11 @@ export default function FluxoCaixaPage() {
   }, [page, filterTipo, filterCategoria, dateFrom, dateTo, search]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    supabase.from("obra_contas_financeiras").select("id, nome").eq("ativa", true).then(({ data }) => {
+      if (data) setContas(data);
+    });
+  }, []);
   useRealtimeSubscription("obra_transacoes_fluxo", fetchData);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -95,7 +103,7 @@ export default function FluxoCaixaPage() {
       observacoes: form.observacoes,
       recorrencia: "Única",
       referencia: "",
-      conta_id: "",
+      conta_id: form.conta_id,
     } as any);
     setSaving(false);
     if (error) {
@@ -103,7 +111,7 @@ export default function FluxoCaixaPage() {
     } else {
       toast.success("Transação registrada!");
       setShowForm(false);
-      setForm({ tipo: "Saída", valor: "", data: new Date().toISOString().split("T")[0], categoria: "Material", descricao: "", forma_pagamento: "PIX", observacoes: "" });
+      setForm({ tipo: "Saída", valor: "", data: new Date().toISOString().split("T")[0], categoria: "Material", descricao: "", forma_pagamento: "PIX", observacoes: "", conta_id: "" });
       fetchData();
     }
   };
