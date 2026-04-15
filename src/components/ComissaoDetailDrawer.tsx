@@ -1,18 +1,10 @@
-import { useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import ConfirmDialog from "@/components/ConfirmDialog";
-import { Textarea } from "@/components/ui/textarea";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { toast } from "sonner";
-import {
-  CheckCircle, Clock, Pencil, Trash2, Save, X,
-  DollarSign, Calendar, Tag, User, CreditCard, FileText, Link2
-} from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { CheckCircle, Clock, FileText, ShoppingCart, Receipt, ArrowRight, Calculator } from "lucide-react";
+
+const PERCENTUAL_COMISSAO = 8;
 
 interface ComissaoRow {
   id: string;
@@ -22,191 +14,230 @@ interface ComissaoRow {
   data_pagamento: string;
   observacoes: string;
   auto: boolean;
-  created_at: string;
-  updated_at: string;
-  transacao_id: string | null;
   categoria: string;
   fornecedor: string;
   forma_pagamento: string;
+  transacao_id: string | null;
+  created_at: string;
+}
+
+interface TransacaoVinculada {
+  id: string;
+  descricao: string;
+  categoria: string;
+  valor: number;
+  data: string;
+  forma_pagamento: string;
+  tipo: string;
+  origem_tipo: string | null;
+}
+
+export function parseObservacoes(obs: string) {
+  if (!obs) return { tipo: "Manual", referencia: "", fornecedor: "" };
+
+  const nfMatch = obs.match(/^(NF\s*\d+)\s*[-–]\s*(.+)/i);
+  if (nfMatch) return { tipo: "NF", referencia: nfMatch[1].trim(), fornecedor: nfMatch[2].trim() };
+
+  const orcMatch = obs.match(/^Orçamento\s*[-–]\s*([^(]+)\s*\(([^)]+)\)/i);
+  if (orcMatch) return { tipo: "Orçamento", referencia: "", fornecedor: orcMatch[1].trim(), categoria: orcMatch[2].trim() };
+
+  const orcSimple = obs.match(/^Orçamento\s*[-–]\s*(.+)/i);
+  if (orcSimple) return { tipo: "Orçamento", referencia: "", fornecedor: orcSimple[1].trim() };
+
+  const compraMatch = obs.match(/^Compra\s*[-–]\s*(.+)/i);
+  if (compraMatch) return { tipo: "Compra", referencia: "", fornecedor: compraMatch[1].trim() };
+
+  return { tipo: "Manual", referencia: obs, fornecedor: "" };
+}
+
+function OrigemBadge({ tipo }: { tipo: string }) {
+  const config: Record<string, { cls: string; icon: React.ReactNode }> = {
+    NF: { cls: "badge-info", icon: <Receipt className="w-3 h-3" /> },
+    Orçamento: { cls: "badge-warning", icon: <FileText className="w-3 h-3" /> },
+    Compra: { cls: "badge-primary", icon: <ShoppingCart className="w-3 h-3" /> },
+    Manual: { cls: "badge-muted", icon: <FileText className="w-3 h-3" /> },
+  };
+  const c = config[tipo] || config.Manual;
+  return (
+    <span className={`${c.cls} inline-flex items-center gap-1 text-[10px]`}>
+      {c.icon} {tipo}
+    </span>
+  );
 }
 
 interface Props {
   comissao: ComissaoRow | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdated: () => void;
 }
 
-export function ComissaoDetailDrawer({ comissao, open, onOpenChange, onUpdated }: Props) {
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Partial<ComissaoRow>>({});
-  const [confirmOpen, setConfirmOpen] = useState(false);
+export default function ComissaoDetailDrawer({ comissao, open, onOpenChange }: Props) {
+  const [transacao, setTransacao] = useState<TransacaoVinculada | null>(null);
+  const [loadingTx, setLoadingTx] = useState(false);
+
+  useEffect(() => {
+    if (!comissao?.transacao_id || !open) { setTransacao(null); return; }
+    setLoadingTx(true);
+    supabase
+      .from("obra_transacoes_fluxo")
+      .select("id, descricao, categoria, valor, data, forma_pagamento, tipo, origem_tipo")
+      .eq("id", comissao.transacao_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        setTransacao(data as TransacaoVinculada | null);
+        setLoadingTx(false);
+      });
+  }, [comissao?.transacao_id, open]);
 
   if (!comissao) return null;
 
-  const startEdit = () => {
-    setForm({
-      valor: comissao.valor,
-      mes: comissao.mes,
-      observacoes: comissao.observacoes,
-      fornecedor: comissao.fornecedor,
-      categoria: comissao.categoria,
-      forma_pagamento: comissao.forma_pagamento,
-    });
-    setEditing(true);
-  };
-
-  const cancelEdit = () => { setEditing(false); setForm({}); };
-
-  const saveEdit = async () => {
-    setSaving(true);
-    const { error } = await supabase
-      .from("obra_comissao_pagamentos")
-      .update({ ...form, updated_at: new Date().toISOString() })
-      .eq("id", comissao.id);
-    setSaving(false);
-    if (error) { toast.error("Erro ao salvar"); return; }
-    toast.success("Comissão atualizada");
-    setEditing(false);
-    onUpdated();
-  };
-
-  const marcarPago = async () => {
-    const { error } = await supabase
-      .from("obra_comissao_pagamentos")
-      .update({ pago: true, data_pagamento: new Date().toISOString().split("T")[0], updated_at: new Date().toISOString() })
-      .eq("id", comissao.id);
-    if (error) { toast.error("Erro ao marcar como pago"); return; }
-    toast.success("Marcado como pago");
-    onUpdated();
-  };
-
-  const softDelete = async () => {
-    const { error } = await supabase
-      .from("obra_comissao_pagamentos")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", comissao.id);
-    if (error) { toast.error("Erro ao excluir"); return; }
-    toast.success("Comissão removida");
-    onOpenChange(false);
-    onUpdated();
-  };
-
-  const DetailRow = ({ icon: Icon, label, value, color }: { icon: any; label: string; value: React.ReactNode; color?: string }) => (
-    <div className="flex items-start gap-3 py-2">
-      <Icon className={`w-4 h-4 mt-0.5 ${color || "text-muted-foreground"}`} />
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
-        <div className="text-sm font-medium mt-0.5">{value || "—"}</div>
-      </div>
-    </div>
-  );
+  const parsed = parseObservacoes(comissao.observacoes);
+  const valorBase = comissao.valor / (PERCENTUAL_COMISSAO / 100);
+  const displayFornecedor = comissao.fornecedor || parsed.fornecedor;
+  const displayCategoria = comissao.categoria || (parsed as any).categoria || "";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader className="pb-4">
+        <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-primary" />
+            <OrigemBadge tipo={parsed.tipo} />
             Detalhes da Comissão
           </SheetTitle>
         </SheetHeader>
 
-        {/* Status Badge */}
-        <div className="flex items-center gap-2 mb-4">
-          {comissao.pago ? (
-            <Badge className="bg-success/10 text-success border-success/20">
-              <CheckCircle className="w-3 h-3 mr-1" /> Pago
-            </Badge>
-          ) : (
-            <Badge className="bg-warning/10 text-warning border-warning/20">
-              <Clock className="w-3 h-3 mr-1" /> Pendente
-            </Badge>
-          )}
-          {comissao.auto && (
-            <Badge variant="secondary" className="text-xs">Automático</Badge>
-          )}
-        </div>
-
-        <Separator className="mb-4" />
-
-        {editing ? (
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground">Valor</label>
-              <Input type="number" step="0.01" value={form.valor || ""} onChange={e => setForm(f => ({ ...f, valor: Number(e.target.value) }))} />
+        <div className="space-y-5 mt-4">
+          {/* Valor & Status */}
+          <div className="glass-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground uppercase">Valor Comissão</span>
+              <span className="text-lg font-bold">{formatCurrency(Number(comissao.valor))}</span>
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Mês Referência</label>
-              <Input value={form.mes || ""} onChange={e => setForm(f => ({ ...f, mes: e.target.value }))} />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground uppercase">Status</span>
+              {comissao.pago
+                ? <span className="badge-success inline-flex items-center gap-1 text-xs"><CheckCircle className="w-3 h-3" /> Pago</span>
+                : <span className="badge-warning inline-flex items-center gap-1 text-xs"><Clock className="w-3 h-3" /> Pendente</span>}
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Fornecedor</label>
-              <Input value={form.fornecedor || ""} onChange={e => setForm(f => ({ ...f, fornecedor: e.target.value }))} />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground uppercase">Mês Ref.</span>
+              <span className="text-sm font-medium">{comissao.mes || "—"}</span>
             </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Categoria</label>
-              <Input value={form.categoria || ""} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Forma de Pagamento</label>
-              <Input value={form.forma_pagamento || ""} onChange={e => setForm(f => ({ ...f, forma_pagamento: e.target.value }))} />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground">Observações</label>
-              <Input value={form.observacoes || ""} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button onClick={saveEdit} disabled={saving} className="flex-1"><Save className="w-4 h-4 mr-1" />Salvar</Button>
-              <Button variant="outline" onClick={cancelEdit}><X className="w-4 h-4" /></Button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-1">
-            <DetailRow icon={DollarSign} label="Valor" value={formatCurrency(Number(comissao.valor))} color="text-primary" />
-            <DetailRow icon={Calendar} label="Mês Referência" value={comissao.mes || "—"} />
-            <DetailRow icon={Calendar} label="Data Pagamento" value={comissao.data_pagamento || "—"} />
-            <DetailRow icon={User} label="Fornecedor" value={comissao.fornecedor || comissao.observacoes || "—"} />
-            <DetailRow icon={Tag} label="Categoria" value={comissao.categoria || "—"} />
-            <DetailRow icon={CreditCard} label="Forma Pagamento" value={comissao.forma_pagamento || "—"} />
-            <DetailRow icon={FileText} label="Observações" value={comissao.observacoes || "—"} />
-            {comissao.transacao_id && (
-              <DetailRow icon={Link2} label="Transação Vinculada" value={
-                <span className="text-xs font-mono text-primary">{comissao.transacao_id.slice(0, 8)}...</span>
-              } />
+            {comissao.data_pagamento && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground uppercase">Data Pgto.</span>
+                <span className="text-sm">{comissao.data_pagamento}</span>
+              </div>
             )}
-            <Separator className="my-3" />
-            <DetailRow icon={Calendar} label="Criado em" value={formatDate(comissao.created_at)} />
-            <DetailRow icon={Calendar} label="Atualizado em" value={formatDate(comissao.updated_at)} />
+            {comissao.auto && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground uppercase">Tipo</span>
+                <span className="badge-info text-[10px]">Automático</span>
+              </div>
+            )}
           </div>
-        )}
 
-        {!editing && (
-          <>
-            <Separator className="my-4" />
-            <div className="flex flex-col gap-2">
-              {!comissao.pago && (
-                <Button onClick={marcarPago} className="w-full bg-success hover:bg-success/90">
-                  <CheckCircle className="w-4 h-4 mr-2" /> Marcar como Pago
-                </Button>
-              )}
-              <Button variant="outline" onClick={startEdit} className="w-full">
-                <Pencil className="w-4 h-4 mr-2" /> Editar
-              </Button>
-              <Button variant="ghost" className="w-full text-destructive hover:text-destructive" onClick={() => setConfirmOpen(true)}>
-                <Trash2 className="w-4 h-4 mr-2" /> Excluir
-              </Button>
-              <ConfirmDialog
-                open={confirmOpen}
-                title="Excluir Comissão"
-                message="Tem certeza que deseja excluir este registro de comissão?"
-                onConfirm={() => { setConfirmOpen(false); softDelete(); }}
-                onCancel={() => setConfirmOpen(false)}
-              />
+          {/* Cálculo da Comissão */}
+          <div className="glass-card p-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-3 flex items-center gap-1.5">
+              <Calculator className="w-3.5 h-3.5" /> Cálculo da Comissão
+            </h3>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium">{PERCENTUAL_COMISSAO}% de</span>
+              <span className="text-primary font-bold">{formatCurrency(valorBase)}</span>
+              <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="font-bold">{formatCurrency(Number(comissao.valor))}</span>
             </div>
-          </>
-        )}
+          </div>
+
+          {/* Origem da Comissão */}
+          <div className="glass-card p-4">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-3">
+              Origem da Comissão
+            </h3>
+            <div className="space-y-2.5">
+              {comissao.observacoes && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Referência</span>
+                  <p className="text-sm font-medium">{comissao.observacoes}</p>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Tipo:</span>
+                <OrigemBadge tipo={parsed.tipo} />
+                {parsed.referencia && <span className="text-xs font-medium">{parsed.referencia}</span>}
+              </div>
+              {displayFornecedor && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Fornecedor</span>
+                  <p className="text-sm font-medium">{displayFornecedor}</p>
+                </div>
+              )}
+              {displayCategoria && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Categoria</span>
+                  <p className="text-sm font-medium">{displayCategoria}</p>
+                </div>
+              )}
+              {comissao.forma_pagamento && (
+                <div>
+                  <span className="text-xs text-muted-foreground">Forma de Pagamento</span>
+                  <p className="text-sm font-medium">{comissao.forma_pagamento}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Transação Vinculada */}
+          {comissao.transacao_id && (
+            <div className="glass-card p-4">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-3">
+                Transação Vinculada
+              </h3>
+              {loadingTx ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : transacao ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Descrição</span>
+                    <span className="text-sm font-medium text-right max-w-[60%] truncate">{transacao.descricao}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Valor Original</span>
+                    <span className="text-sm font-bold text-primary">{formatCurrency(Number(transacao.valor))}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Data</span>
+                    <span className="text-sm">{transacao.data}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Categoria</span>
+                    <span className="text-sm">{transacao.categoria || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Forma Pagamento</span>
+                    <span className="text-sm">{transacao.forma_pagamento || "—"}</span>
+                  </div>
+                  {transacao.origem_tipo && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Origem</span>
+                      <span className="text-sm">{transacao.origem_tipo}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground">Transação não encontrada</p>
+              )}
+            </div>
+          )}
+
+          {/* Metadata */}
+          <div className="text-[10px] text-muted-foreground/60 px-1">
+            Criado em {formatDate(comissao.created_at)} · ID: {comissao.id.slice(0, 8)}
+          </div>
+        </div>
       </SheetContent>
     </Sheet>
   );
