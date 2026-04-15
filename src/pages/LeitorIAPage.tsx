@@ -15,6 +15,7 @@ interface DadosExtraidos {
 }
 
 export default function LeitorIAPage() {
+  const { user } = useAuth();
   const [texto, setTexto] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,6 +76,7 @@ export default function LeitorIAPage() {
     setSaving(true);
 
     const { error } = await supabase.from("obra_transacoes_fluxo").insert({
+      user_id: user!.id,
       tipo: "Saída",
       valor: dados.valor,
       data: dados.data || new Date().toISOString().split("T")[0],
@@ -86,7 +88,7 @@ export default function LeitorIAPage() {
       conta_id: "",
       observacoes: `Origem: IA | Fornecedor: ${dados.fornecedor}`,
       origem_tipo: "ia",
-    });
+    } as any);
 
     setSaving(false);
     if (error) {
