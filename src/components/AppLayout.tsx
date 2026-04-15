@@ -10,6 +10,10 @@ import {
   X,
   Building2,
   History,
+  Calendar,
+  TrendingUp,
+  Lightbulb,
+  BarChart3,
 } from "lucide-react";
 import UserMenu from "@/components/UserMenu";
 import NotificationBell from "@/components/NotificationBell";
@@ -24,10 +28,14 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
+  { path: "/cronograma", label: "Cronograma", icon: Calendar },
   { path: "/fluxo", label: "Fluxo de Caixa", icon: ArrowLeftRight, allowedRoles: ["admin", "financeiro"] },
   { path: "/compras", label: "Compras", icon: ShoppingCart, allowedRoles: ["admin", "financeiro"] },
+  { path: "/previsao", label: "Previsão", icon: TrendingUp, allowedRoles: ["admin", "financeiro"] },
+  { path: "/insights", label: "Insights", icon: Lightbulb },
   { path: "/leitor-ia", label: "Leitor IA", icon: FileText, allowedRoles: ["admin", "financeiro"] },
   { path: "/comissao", label: "Comissão", icon: Percent, allowedRoles: ["admin", "construtor"] },
+  { path: "/relatorios", label: "Relatórios", icon: BarChart3, allowedRoles: ["admin", "financeiro"] },
   { path: "/auditoria", label: "Auditoria", icon: History, allowedRoles: ["admin"] },
 ];
 
@@ -54,7 +62,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {visibleItems.map((item) => {
             const active = location.pathname === item.path;
             return (
@@ -84,7 +92,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Header */}
         <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
           <div className="flex items-center gap-2 lg:hidden">
             <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground p-1">
@@ -100,7 +107,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* Mobile nav overlay */}
         {mobileOpen && (
           <div className="lg:hidden absolute inset-0 z-50 bg-background/95 backdrop-blur-sm pt-14">
             <nav className="px-4 py-4 space-y-1">

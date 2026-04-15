@@ -9,13 +9,16 @@ import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
 import NotFound from "./pages/NotFound.tsx";
 
-// Lazy loaded pages
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const FluxoCaixaPage = lazy(() => import("@/pages/FluxoCaixaPage"));
 const ComprasPage = lazy(() => import("@/pages/ComprasPage"));
 const LeitorIAPage = lazy(() => import("@/pages/LeitorIAPage"));
 const ComissaoPage = lazy(() => import("@/pages/ComissaoPage"));
 const AuditoriaPage = lazy(() => import("@/pages/AuditoriaPage"));
+const CronogramaPage = lazy(() => import("@/pages/CronogramaPage"));
+const PrevisaoPage = lazy(() => import("@/pages/PrevisaoPage"));
+const InsightsPage = lazy(() => import("@/pages/InsightsPage"));
+const RelatoriosPage = lazy(() => import("@/pages/RelatoriosPage"));
 
 const queryClient = new QueryClient();
 
@@ -50,6 +53,10 @@ function AuthenticatedApp() {
           <Route path="/leitor-ia" element={<LeitorIAPage />} />
           <Route path="/comissao" element={<ComissaoPage />} />
           <Route path="/auditoria" element={<AuditoriaPage />} />
+          <Route path="/cronograma" element={<CronogramaPage />} />
+          <Route path="/previsao" element={<PrevisaoPage />} />
+          <Route path="/insights" element={<InsightsPage />} />
+          <Route path="/relatorios" element={<RelatoriosPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
