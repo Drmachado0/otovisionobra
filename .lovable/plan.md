@@ -1,52 +1,33 @@
 
 
-## Plan: Sistema de Comissão Avançado
+## Plan: Mostrar origem detalhada das comissões
 
-### Problema atual
-A página de comissão mostra apenas uma lista simples de pagamentos sem contexto. Não mostra a origem de cada comissão (qual transação/compra gerou), não tem acompanhamento mensal comparativo, e não permite gestão detalhada.
-
-### O que já existe no banco
-A tabela `obra_comissao_pagamentos` já tem campo `observacoes` que contém a referência (ex: "NF 167970 - CONSTRUNORTE") e campo `mes` para agrupamento mensal. As transações em `obra_transacoes_fluxo` têm `categoria`, `descricao`, `origem_tipo`.
+### Problema
+Os registros de comissão têm a origem no campo `observacoes` (ex: "NF 167970 - CONSTRUNORTE", "Orçamento - SINOBRAS (Estrutura)") mas a lista mostra apenas mês e valor, sem destaque para essa informação. Os campos `fornecedor`, `categoria` e `forma_pagamento` estão vazios nos dados existentes. O drawer também não busca a transação vinculada.
 
 ### Mudanças
 
-#### 1. Migração: adicionar campos de rastreabilidade
-Adicionar à tabela `obra_comissao_pagamentos`:
-- `transacao_id uuid` -- vínculo direto com a transação que gerou a comissão
-- `categoria text` -- categoria da transação de origem
-- `fornecedor text` -- fornecedor de origem
-- `forma_pagamento text` -- como foi pago
+#### 1. ComissaoPage.tsx -- Lista com origem visível
+- Exibir `observacoes` como título principal de cada item (já contém a referência de origem)
+- Parsear o prefixo da observação para exibir um badge de tipo de origem: "NF", "Orçamento", "Compra"
+- Mostrar o valor base da transação que gerou a comissão (8% inverso: `valor / 0.08`)
 
-#### 2. Reescrever ComissaoPage com 3 seções
+#### 2. ComissaoDetailDrawer.tsx -- Seção "Origem" com dados da transação
+- Adicionar seção "Origem da Comissão" no drawer
+- Parsear `observacoes` para extrair: tipo (NF/Orçamento/Compra), referência, fornecedor
+- Se `transacao_id` existir, buscar a transação vinculada e mostrar: descrição, categoria, valor original, data, forma de pagamento, origem_tipo
+- Mostrar cálculo: "8% de R$ X.XXX = R$ YYY"
+- Badge visual do tipo de origem (NF, Compra, Orçamento)
 
-**Seção A -- KPIs (melhorados)**
-- Base de gastos, comissão total, pago, pendente (mantém)
-- Adicionar: comissão média mensal, mês com maior comissão
+#### 3. Backfill: extrair fornecedor/categoria do observacoes
+- No frontend, parsear o campo `observacoes` para preencher visualmente fornecedor e categoria quando os campos dedicados estiverem vazios
+- Exemplo: "Orçamento - SINOBRAS (Estrutura)" → fornecedor: "SINOBRAS", categoria: "Estrutura"
+- Exemplo: "NF 167970 - CONSTRUNORTE MATERIAIS" → referência: "NF 167970", fornecedor: "CONSTRUNORTE MATERIAIS"
 
-**Seção B -- Acompanhamento Mensal Comparativo**
-- Tabela/chart com colunas: Mês, Gastos do Mês, Comissão Gerada, Comissão Paga, Saldo Pendente
-- Barra de progresso por mês
-- Comparativo com mês anterior (seta verde/vermelha + %)
-- Usar Recharts BarChart para visualização mensal
+### Arquivos a editar
+- `src/pages/ComissaoPage.tsx` -- badges de origem na lista, valor base calculado
+- `src/components/ComissaoDetailDrawer.tsx` -- seção origem, fetch transação vinculada, cálculo visual
 
-**Seção C -- Detalhamento de Pagamentos**
-- Cada pagamento mostra: valor, mês referência, fornecedor/origem, categoria, status (pago/pendente), data do pagamento, se foi automático
-- Drawer ao clicar no pagamento com todos os detalhes + link para a transação de origem
-- Filtros por mês e status
-- Botão para marcar como pago / registrar pagamento
-
-#### 3. Componente ComissaoDetailDrawer
-Sheet lateral mostrando:
-- Dados completos do pagamento
-- Origem (transação vinculada, fornecedor, NF)
-- Histórico de alterações
-- Botões de ação (marcar pago, editar, excluir)
-
-### Arquivos
-- **Migração SQL**: adicionar `transacao_id`, `categoria`, `fornecedor`, `forma_pagamento` à tabela `obra_comissao_pagamentos`
-- **`src/pages/ComissaoPage.tsx`**: reescrever completo com as 3 seções
-- **`src/components/ComissaoDetailDrawer.tsx`**: novo componente de detalhamento
-
-### Dados para o comparativo mensal
-Agrupar transações de saída por mês (`data` field) para calcular gastos mensais, e cruzar com comissões agrupadas por `mes` para mostrar o comparativo lado a lado.
+### Sem migração necessária
+Os dados já estão no campo `observacoes`. A melhoria é puramente de apresentação no frontend.
 
