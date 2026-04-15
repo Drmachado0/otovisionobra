@@ -58,7 +58,7 @@ export default function ConfiguracoesPage() {
   const updateRole = async (userId: string, newRole: string) => {
     const { error } = await supabase
       .from("user_roles")
-      .update({ role: newRole })
+      .update({ role: newRole } as any)
       .eq("user_id", userId);
 
     if (error) {
