@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useAuth } from "@/hooks/useAuth";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate, CATEGORIAS_PADRAO } from "@/lib/formatters";
 import {
   Plus, ArrowUpRight, ArrowDownRight, Search, X,
   ChevronLeft, ChevronRight, Filter, CreditCard,
@@ -16,10 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import OrigemBadge from "@/components/OrigemBadge";
 import TransacaoDetailDrawer, { type TransacaoFull } from "@/components/TransacaoDetailDrawer";
 
-const CATEGORIAS = [
-  "Material", "Mão de Obra", "Equipamento", "Serviço", "Administrativo",
-  "Transporte", "Alimentação", "Aporte", "Outro",
-];
+const CATEGORIAS = CATEGORIAS_PADRAO;
 
 const FORMAS_PAGAMENTO = ["PIX", "Cartão", "Boleto", "Dinheiro", "Transferência"];
 const PAGE_SIZE = 50;

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency, formatDate, CATEGORIAS_PADRAO } from "@/lib/formatters";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,10 +52,7 @@ interface Props {
   onUpdated: () => void;
 }
 
-const CATEGORIAS = [
-  "Material", "Mão de Obra", "Equipamento", "Serviço", "Administrativo",
-  "Transporte", "Alimentação", "Aporte", "Outro",
-];
+const CATEGORIAS = CATEGORIAS_PADRAO;
 
 const FORMAS_PAGAMENTO = ["PIX", "Cartão", "Boleto", "Dinheiro", "Transferência"];
 
