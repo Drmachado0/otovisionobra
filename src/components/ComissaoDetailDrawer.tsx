@@ -41,6 +41,7 @@ export function ComissaoDetailDrawer({ comissao, open, onOpenChange, onUpdated }
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Partial<ComissaoRow>>({});
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   if (!comissao) return null;
 
