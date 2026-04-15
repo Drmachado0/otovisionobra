@@ -1,100 +1,61 @@
 
 
-## Plan: Design System Overhaul + Transaction Detail Enhancement
+## Plan: Sistema de Compras Parceladas e Recorrentes
 
-This is a comprehensive improvement covering two areas: (1) upgrading the visual design system across all pages and (2) adding detailed transaction views with more information.
+### Problema atual
+O formulário de compras é simplista: apenas campos básicos, sem suporte a parcelamento (apesar do banco já ter `parcelas` jsonb e `numero_parcelas`), sem compras recorrentes (assinaturas), e sem visualização de parcelas pagas/pendentes.
 
-### Current Issues Identified
+### O que o banco já suporta
+- `obra_compras`: campos `parcelas` (jsonb), `numero_parcelas` (int), `observacoes`, `data_entrega_prevista`, `nf_vinculada`, `conta_id`, `itens` (jsonb)
+- Função `pagar_parcela_atomica`: já existe para pagar parcela individual e gerar transação
+- Função `create_compra_atomica`: já cria compra + transação + comissão atomicamente
 
-- **Transactions show minimal info**: only type, date, description, category, value. Missing: forma_pagamento, observacoes, origem_tipo, conciliado status, conta_id, recorrencia
-- **No transaction detail view**: clicking a row does nothing -- no drawer/modal with full info
-- **No edit/delete on transactions**: users can only add, not modify
-- **Inconsistent component usage**: some pages use raw HTML inputs/selects, others use shadcn components (Input, Select, Dialog)
-- **No micro-interactions or hover states** on cards
-- **Tables lack row click actions** across all modules
-- **No pagination** on any list
-- **Header is underutilized**: no breadcrumb, no page context
+### Mudanças
 
-### Changes
+#### 1. ComprasPage.tsx -- Reescrever formulário e listagem
 
-#### 1. Enhanced Design System (CSS + Tailwind)
-**File: `src/index.css`**
-- Add subtle gradient backgrounds on page headers
-- Add `@keyframes fade-in-up` for staggered card animations
-- Add `.glass-card-interactive` variant with scale transform on hover
-- Improve stat-card styles with subtle inner glow
-- Add `.badge-*` utility classes for consistent status badges
-- Add `.table-row-interactive` for hover/click feedback on table rows
+**Formulário "Nova Compra" expandido:**
+- Tipo de compra: "Única", "Parcelada", "Recorrente"
+- Se **Parcelada**: campos `numero_parcelas` (2-48x), gera array de parcelas com datas mensais, valor por parcela calculado automaticamente, cada parcela com status Pendente/Paga
+- Se **Recorrente**: campos `periodicidade` (Mensal/Trimestral/Anual), `descricao` da assinatura (ex: "Internet", "Câmeras"), marca `recorrencia` na transação
+- Campo `observacoes`
+- Usar `create_compra_atomica` RPC ao invés de insert direto (já gera transação e comissão atomicamente)
 
-**File: `tailwind.config.ts`**
-- Add `fade-in-up` animation with staggered delays
-- Add `scale-in` keyframe for modals/dialogs
+**Listagem melhorada:**
+- Coluna "Tipo" com badge: Única / Parcelada (3/6x) / Recorrente
+- Coluna "Parcelas" mostrando progresso: "2/6 pagas"
+- Expandir linha ao clicar para ver detalhamento das parcelas com datas e status
+- Botão "Pagar Parcela" que chama `pagar_parcela_atomica`
+- KPI adicional: "Parcelas Pendentes" (valor total das parcelas ainda não pagas)
 
-#### 2. Transaction Detail Drawer
-**New file: `src/components/TransacaoDetailDrawer.tsx`**
-- Full-width Sheet (drawer) showing all transaction fields
-- Fields displayed: tipo, valor, data, categoria, descricao, forma_pagamento, observacoes, origem_tipo, conciliado status, recorrencia, conta, created_at
-- Origin badge (manual, IA, compra, conciliacao)
-- Conciliation status indicator
-- Edit button that toggles inline editing
-- Soft-delete button with ConfirmDialog
+**Filtros:**
+- Por tipo (Única/Parcelada/Recorrente)
+- Por status de pagamento
 
-#### 3. FluxoCaixaPage Improvements
-**File: `src/pages/FluxoCaixaPage.tsx`**
-- Fetch ALL fields from `obra_transacoes_fluxo` (forma_pagamento, observacoes, origem_tipo, conciliado, recorrencia, conta_id, created_at)
-- Add `forma_pagamento` column to table
-- Add `origem` badge column (Manual, IA, Compra, Conciliacao)
-- Clickable rows open TransacaoDetailDrawer
-- Add date range filter (inicio/fim)
-- Add category filter dropdown
-- Add pagination (50 per page)
-- Use shadcn Dialog instead of raw modal for new transaction form
-- Add edit capability via the drawer
+#### 2. Componente CompraDetailDrawer (dentro de ComprasPage ou novo arquivo)
+- Sheet lateral ao clicar na compra
+- Mostra todos os campos: fornecedor, valor total, categoria, observações, NF vinculada
+- Se parcelada: tabela de parcelas com número, valor, data vencimento, status, botão "Pagar"
+- Se recorrente: próximo vencimento, histórico de cobranças
+- Botão editar / soft-delete
 
-#### 4. ComprasPage Improvements
-**File: `src/pages/ComprasPage.tsx`**
-- Clickable rows open detail view showing: fornecedor, itens, parcelas, NF vinculada, observacoes, data_entrega_prevista/real
-- Add `forma_pagamento` column
-- Use shadcn components consistently (Dialog, Select, Input)
+#### 3. Lógica de parcelas
+- Ao criar compra parcelada, gerar array `parcelas` com objetos: `{ numero: 1, valor: X, data_vencimento: "YYYY-MM-DD", status: "Pendente" }`
+- Ao pagar parcela, chamar `pagar_parcela_atomica` que atualiza status e cria transação no fluxo
+- Não gerar transação de valor total na criação -- só gerar transação por parcela paga
 
-#### 5. DashboardPage Polish
-**File: `src/pages/DashboardPage.tsx`**
-- Add staggered animation on KPI cards (delay per card)
-- Recent transactions show forma_pagamento and origem badge
-- Clickable recent transactions open detail drawer
-- Add "Ver todos" link to fluxo page
+#### 4. Lógica de recorrentes
+- Salvar com `forma_pagamento` indicando recorrência e `observacoes` com detalhes
+- Transação gerada com `recorrencia: "Mensal"` (ou Trimestral/Anual)
+- Na listagem, mostrar badge "Recorrente" com ícone de refresh
 
-#### 6. Consistent Shadcn Usage Across All Pages
-- Replace raw `<select>`, `<input>`, `<button>` in FluxoCaixaPage, ComprasPage, LeitorIAPage, LoginPage with shadcn `Select`, `Input`, `Button`
-- Use `Sheet` for detail views, `Dialog` for creation forms
-- Use `Badge` for status indicators everywhere
+### Arquivos a editar
+- `src/pages/ComprasPage.tsx` -- reescrever completo com formulário expandido, parcelas, recorrentes, drawer de detalhes
+- Nenhuma migração necessária -- banco já tem todos os campos
 
-#### 7. AppLayout Polish
-**File: `src/components/AppLayout.tsx`**
-- Add breadcrumb showing current page name in header
-- Add subtle border-bottom glow on active nav item
-- Smoother mobile menu animation (slide-in from left)
-
-### Technical Details
-
-- Transaction detail drawer receives a transaction ID, fetches full row including observacoes/origem_tipo
-- Edit uses `supabase.from("obra_transacoes_fluxo").update(...)` 
-- Soft-delete sets `deleted_at = now()`
-- No database migration needed -- all fields already exist in the schema
-- Pagination uses `.range(from, to)` on Supabase queries
-- All pages get consistent input styling via shared CSS utility classes
-
-### Files to Create
-- `src/components/TransacaoDetailDrawer.tsx`
-
-### Files to Edit
-- `src/index.css` -- design system utilities
-- `tailwind.config.ts` -- new animations
-- `src/pages/FluxoCaixaPage.tsx` -- full rewrite with details, filters, pagination
-- `src/pages/ComprasPage.tsx` -- shadcn components, detail view
-- `src/pages/DashboardPage.tsx` -- animations, clickable transactions
-- `src/components/AppLayout.tsx` -- breadcrumb, nav polish
-- `src/pages/LoginPage.tsx` -- shadcn inputs
-- `src/pages/ComissaoPage.tsx` -- consistent components
-- `src/pages/LeitorIAPage.tsx` -- consistent components
+### Detalhes técnicos
+- Usar RPC `create_compra_atomica` para criação (compra única/recorrente gera transação; parcelada não gera transação imediata)
+- Usar RPC `pagar_parcela_atomica` para pagamento individual de parcela
+- Array de parcelas: `[{numero: 1, valor: 500, data_vencimento: "2026-05-15", status: "Pendente"}, ...]`
+- Fetch expandido: incluir `parcelas, numero_parcelas, observacoes, nf_vinculada, conta_id, itens` na query
 
