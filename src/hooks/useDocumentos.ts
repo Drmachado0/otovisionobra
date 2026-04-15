@@ -196,58 +196,13 @@ export function useDocumentos() {
       if (aiErr) throw aiErr;
 
       const confianca = aiData.confianca || 0;
-      const statusFinal = confianca >= 70 ? "processado" : "revisao";
-      const motivoRevisao = confianca < 70 ? "Confiança baixa na extração (" + confianca + "%)" : "";
-
-      await supabase.from("obra_documentos_processados").update({
-        status_processamento: statusFinal,
-        tipo_documento: aiData.tipo_documento || "",
-        confianca_extracao: confianca,
-        payload_bruto: aiData,
-        payload_normalizado: aiData,
-        motivo_revisao: motivoRevisao,
-      } as any).eq("id", docId);
-
-      // Save extracted movements
-      const movs = aiData.movimentacoes || [];
-      if (movs.length > 0) {
-        const rows = movs.map((m: any) => ({
-          user_id: user.id,
-          documento_id: docId,
-          data_movimentacao: m.data || new Date().toISOString().split("T")[0],
-          descricao: m.descricao || "",
-          valor: m.valor || 0,
-          tipo_movimentacao: m.tipo || "saida",
-          saldo: m.saldo ?? null,
-          categoria_sugerida: m.categoria_sugerida || "Outro",
-          score_confianca: confianca,
-          status_revisao: statusFinal === "processado" ? "aprovado" : "pendente",
-        }));
-        await supabase.from("obra_movimentacoes_extraidas").insert(rows as any);
-      } else if (aiData.valor_total) {
-        // Single movement doc
-        await supabase.from("obra_movimentacoes_extraidas").insert({
-          user_id: user.id,
-          documento_id: docId,
-          data_movimentacao: aiData.data_documento || new Date().toISOString().split("T")[0],
-          descricao: aiData.descricao || "",
-          valor: aiData.valor_total || 0,
-          tipo_movimentacao: aiData.tipo_movimentacao || "saida",
-          categoria_sugerida: aiData.categoria_sugerida || "Outro",
-          score_confianca: confianca,
-          status_revisao: statusFinal === "processado" ? "aprovado" : "pendente",
-        } as any);
-      }
-
-      // Content dedup check
-      await checkContentDuplicates(docId, aiData, user.id);
-
-      await registrarEvento(docId, "ia_extracao", "sucesso", `Extração concluída (${confianca}%)`);
-      toast.success(`Documento processado (${confianca}% confiança)`);
+      // Persistence already handled by the edge function (persistir=true)
+      await registrarEvento(docId, "ia_extracao", "sucesso", `Extração Claude concluída (${confianca}%)`);
+      toast.success(`Documento processado via Claude (${confianca}% confiança)`);
     } catch (err: any) {
       await supabase.from("obra_documentos_processados").update({
         status_processamento: "erro",
-        motivo_erro: err.message || "Erro na IA",
+        motivo_erro: err.message || "Erro na IA Claude",
       } as any).eq("id", docId);
       await registrarEvento(docId, "ia_extracao", "erro", err.message || "Erro desconhecido");
       toast.error("Erro no processamento IA");
