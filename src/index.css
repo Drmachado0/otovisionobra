@@ -63,6 +63,10 @@
 
     --shadow-card: 0 4px 24px -4px hsla(0 0% 0% / 0.4);
     --shadow-glow: 0 0 20px -4px hsla(165 82% 51% / 0.15);
+    --shadow-glow-success: 0 0 20px -4px hsla(142 76% 36% / 0.15);
+    --shadow-glow-danger: 0 0 20px -4px hsla(0 72% 51% / 0.15);
+    --shadow-glow-info: 0 0 20px -4px hsla(217 91% 60% / 0.15);
+    --shadow-glow-warning: 0 0 20px -4px hsla(38 92% 50% / 0.15);
   }
 }
 
@@ -92,53 +96,123 @@
     box-shadow: var(--shadow-glow);
   }
 
+  .glass-card-interactive {
+    @apply glass-card transition-all duration-300 cursor-pointer;
+  }
+
+  .glass-card-interactive:hover {
+    @apply border-primary/30 scale-[1.02];
+    box-shadow: var(--shadow-glow);
+  }
+
   .gradient-text {
     @apply bg-clip-text text-transparent;
     background-image: linear-gradient(135deg, hsl(165 82% 51%), hsl(165 82% 70%));
   }
 
   .stat-card-success {
-    @apply glass-card relative overflow-hidden;
+    @apply glass-card relative overflow-hidden transition-all duration-300;
   }
   .stat-card-success::before {
     content: '';
     @apply absolute top-0 left-0 w-1 h-full;
     background: var(--gradient-success);
   }
+  .stat-card-success:hover {
+    box-shadow: var(--shadow-glow-success);
+    @apply border-success/20;
+  }
 
   .stat-card-danger {
-    @apply glass-card relative overflow-hidden;
+    @apply glass-card relative overflow-hidden transition-all duration-300;
   }
   .stat-card-danger::before {
     content: '';
     @apply absolute top-0 left-0 w-1 h-full;
     background: var(--gradient-danger);
   }
+  .stat-card-danger:hover {
+    box-shadow: var(--shadow-glow-danger);
+    @apply border-destructive/20;
+  }
 
   .stat-card-info {
-    @apply glass-card relative overflow-hidden;
+    @apply glass-card relative overflow-hidden transition-all duration-300;
   }
   .stat-card-info::before {
     content: '';
     @apply absolute top-0 left-0 w-1 h-full;
     background: var(--gradient-info);
   }
+  .stat-card-info:hover {
+    box-shadow: var(--shadow-glow-info);
+    @apply border-info/20;
+  }
 
   .stat-card-warning {
-    @apply glass-card relative overflow-hidden;
+    @apply glass-card relative overflow-hidden transition-all duration-300;
   }
   .stat-card-warning::before {
     content: '';
     @apply absolute top-0 left-0 w-1 h-full;
     background: var(--gradient-warning);
   }
+  .stat-card-warning:hover {
+    box-shadow: var(--shadow-glow-warning);
+    @apply border-warning/20;
+  }
 
   .stat-card-primary {
-    @apply glass-card relative overflow-hidden;
+    @apply glass-card relative overflow-hidden transition-all duration-300;
   }
   .stat-card-primary::before {
     content: '';
     @apply absolute top-0 left-0 w-1 h-full;
+    background: var(--gradient-primary);
+  }
+  .stat-card-primary:hover {
+    box-shadow: var(--shadow-glow);
+    @apply border-primary/20;
+  }
+
+  .table-row-interactive {
+    @apply border-b border-border/30 transition-all duration-200 cursor-pointer;
+  }
+  .table-row-interactive:hover {
+    @apply bg-accent/50;
+    box-shadow: inset 2px 0 0 0 hsl(var(--primary));
+  }
+
+  .badge-success {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-success/10 text-success border border-success/20;
+  }
+
+  .badge-danger {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-warning/10 text-warning border border-warning/20;
+  }
+
+  .badge-info {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-info/10 text-info border border-info/20;
+  }
+
+  .badge-primary {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20;
+  }
+
+  .badge-muted {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-secondary text-muted-foreground border border-border;
+  }
+
+  .page-header {
+    @apply relative pb-2;
+  }
+  .page-header::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-16 h-0.5 rounded-full;
     background: var(--gradient-primary);
   }
 

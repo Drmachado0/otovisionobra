@@ -4,38 +4,52 @@ import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
-  Plus,
-  ArrowUpRight,
-  ArrowDownRight,
-  Search,
-  X,
+  Plus, ArrowUpRight, ArrowDownRight, Search, X,
+  ChevronLeft, ChevronRight, Filter, CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
-
-interface Transacao {
-  id: string;
-  tipo: string;
-  valor: number;
-  data: string;
-  categoria: string;
-  descricao: string;
-  forma_pagamento: string;
-  observacoes: string;
-}
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import TransacaoDetailDrawer, { type TransacaoFull } from "@/components/TransacaoDetailDrawer";
 
 const CATEGORIAS = [
   "Material", "Mão de Obra", "Equipamento", "Serviço", "Administrativo",
   "Transporte", "Alimentação", "Aporte", "Outro",
 ];
 
+const FORMAS_PAGAMENTO = ["PIX", "Cartão", "Boleto", "Dinheiro", "Transferência"];
+const PAGE_SIZE = 50;
+
+function getOrigemBadge(origem?: string | null) {
+  switch (origem) {
+    case "ia": return <span className="badge-info text-[10px]">IA</span>;
+    case "compra": return <span className="badge-warning text-[10px]">Compra</span>;
+    case "conciliacao": return <span className="badge-primary text-[10px]">Conciliação</span>;
+    case "pasta": return <span className="badge-success text-[10px]">Pasta</span>;
+    default: return <span className="badge-muted text-[10px]">Manual</span>;
+  }
+}
+
 export default function FluxoCaixaPage() {
   const { user } = useAuth();
-  const [transacoes, setTransacoes] = useState<Transacao[]>([]);
+  const [transacoes, setTransacoes] = useState<TransacaoFull[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [filterTipo, setFilterTipo] = useState<string>("todos");
+  const [filterCategoria, setFilterCategoria] = useState<string>("todos");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const [selectedTransacao, setSelectedTransacao] = useState<TransacaoFull | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [form, setForm] = useState({
     tipo: "Saída",
@@ -48,15 +62,27 @@ export default function FluxoCaixaPage() {
   });
 
   const fetchData = useCallback(async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("obra_transacoes_fluxo")
-      .select("id, tipo, valor, data, categoria, descricao, forma_pagamento, observacoes")
+      .select("id, tipo, valor, data, categoria, descricao, forma_pagamento, observacoes, origem_tipo, conciliado, recorrencia, conta_id, referencia, created_at", { count: "exact" })
       .is("deleted_at", null)
-      .order("data", { ascending: false })
-      .limit(500);
-    if (data) setTransacoes(data as Transacao[]);
+      .order("data", { ascending: false });
+
+    if (filterTipo !== "todos") query = query.eq("tipo", filterTipo);
+    if (filterCategoria !== "todos") query = query.eq("categoria", filterCategoria);
+    if (dateFrom) query = query.gte("data", dateFrom);
+    if (dateTo) query = query.lte("data", dateTo);
+    if (search) query = query.or(`descricao.ilike.%${search}%,categoria.ilike.%${search}%`);
+
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    query = query.range(from, to);
+
+    const { data, count } = await query;
+    if (data) setTransacoes(data as TransacaoFull[]);
+    if (count !== null) setTotalCount(count);
     setLoading(false);
-  }, []);
+  }, [page, filterTipo, filterCategoria, dateFrom, dateTo, search]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useRealtimeSubscription("obra_transacoes_fluxo", fetchData);
@@ -92,71 +118,82 @@ export default function FluxoCaixaPage() {
     }
   };
 
-  const filtered = transacoes.filter((t) => {
-    const matchSearch = search === "" ||
-      t.descricao?.toLowerCase().includes(search.toLowerCase()) ||
-      t.categoria?.toLowerCase().includes(search.toLowerCase());
-    const matchTipo = filterTipo === "todos" || t.tipo === filterTipo;
-    return matchSearch && matchTipo;
-  });
+  const totalEntradas = transacoes.filter(t => t.tipo === "Entrada").reduce((s, t) => s + Number(t.valor), 0);
+  const totalSaidas = transacoes.filter(t => t.tipo === "Saída").reduce((s, t) => s + Number(t.valor), 0);
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
-  const totalEntradas = filtered.filter(t => t.tipo === "Entrada").reduce((s, t) => s + Number(t.valor), 0);
-  const totalSaidas = filtered.filter(t => t.tipo === "Saída").reduce((s, t) => s + Number(t.valor), 0);
+  const openDetail = (t: TransacaoFull) => {
+    setSelectedTransacao(t);
+    setDrawerOpen(true);
+  };
 
   return (
     <div className="space-y-6 animate-slide-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between page-header">
         <div>
           <h1 className="text-2xl font-bold">Fluxo de Caixa</h1>
           <p className="text-sm text-muted-foreground">Entradas e saídas financeiras</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
+        <Button onClick={() => setShowForm(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Nova Transação
-        </button>
+        </Button>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="stat-card-success p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Entradas</p>
-          <p className="text-lg font-bold text-success mt-1">{formatCurrency(totalEntradas)}</p>
-        </div>
-        <div className="stat-card-danger p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Saídas</p>
-          <p className="text-lg font-bold text-destructive mt-1">{formatCurrency(totalSaidas)}</p>
-        </div>
-        <div className="stat-card-info p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Saldo</p>
-          <p className={`text-lg font-bold mt-1 ${totalEntradas - totalSaidas >= 0 ? "text-success" : "text-destructive"}`}>
-            {formatCurrency(totalEntradas - totalSaidas)}
-          </p>
-        </div>
+        {[
+          { cls: "stat-card-success", label: "Entradas", value: formatCurrency(totalEntradas), color: "text-success" },
+          { cls: "stat-card-danger", label: "Saídas", value: formatCurrency(totalSaidas), color: "text-destructive" },
+          { cls: "stat-card-info", label: "Saldo", value: formatCurrency(totalEntradas - totalSaidas), color: totalEntradas - totalSaidas >= 0 ? "text-success" : "text-destructive" },
+        ].map((c, i) => (
+          <div key={i} className={`${c.cls} p-4`} style={{ animationDelay: `${i * 100}ms` }}>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">{c.label}</p>
+            <p className={`text-lg font-bold mt-1 ${c.color}`}>{c.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
+          <Input
             placeholder="Buscar por descrição ou categoria..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            onChange={e => { setSearch(e.target.value); setPage(0); }}
+            className="pl-10"
           />
         </div>
         <select
           value={filterTipo}
-          onChange={e => setFilterTipo(e.target.value)}
-          className="px-4 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+          onChange={e => { setFilterTipo(e.target.value); setPage(0); }}
+          className="px-4 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <option value="todos">Todos</option>
           <option value="Entrada">Entradas</option>
           <option value="Saída">Saídas</option>
         </select>
+        <select
+          value={filterCategoria}
+          onChange={e => { setFilterCategoria(e.target.value); setPage(0); }}
+          className="px-4 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="todos">Categoria</option>
+          {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+
+      {/* Date range */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <Filter className="w-4 h-4 text-muted-foreground" />
+        <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0); }} className="w-auto" placeholder="De" />
+        <span className="text-muted-foreground text-sm">até</span>
+        <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0); }} className="w-auto" placeholder="Até" />
+        {(dateFrom || dateTo) && (
+          <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); setPage(0); }}>
+            <X className="w-3 h-3 mr-1" /> Limpar
+          </Button>
+        )}
       </div>
 
       {/* Table */}
@@ -165,7 +202,7 @@ export default function FluxoCaixaPage() {
           <div className="flex justify-center py-12">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : transacoes.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-12">Nenhuma transação encontrada</p>
         ) : (
           <div className="overflow-x-auto">
@@ -176,12 +213,14 @@ export default function FluxoCaixaPage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Data</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Descrição</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Categoria</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase hidden md:table-cell">Pagamento</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase hidden lg:table-cell">Origem</th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Valor</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((t) => (
-                  <tr key={t.id} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
+                {transacoes.map((t) => (
+                  <tr key={t.id} onClick={() => openDetail(t)} className="table-row-interactive">
                     <td className="px-4 py-3">
                       <div className={`w-7 h-7 rounded-md flex items-center justify-center ${
                         t.tipo === "Entrada" ? "bg-success/10" : "bg-destructive/10"
@@ -194,9 +233,17 @@ export default function FluxoCaixaPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(t.data)}</td>
-                    <td className="px-4 py-3 font-medium">{t.descricao || "-"}</td>
+                    <td className="px-4 py-3 font-medium max-w-[200px] truncate">{t.descricao || "-"}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-1 rounded-md bg-secondary text-xs">{t.categoria || "-"}</span>
+                      <span className="badge-muted">{t.categoria || "-"}</span>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <CreditCard className="w-3 h-3" />{t.forma_pagamento || "-"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      {getOrigemBadge(t.origem_tipo)}
                     </td>
                     <td className={`px-4 py-3 text-right font-semibold ${
                       t.tipo === "Entrada" ? "text-success" : "text-destructive"
@@ -209,69 +256,85 @@ export default function FluxoCaixaPage() {
             </table>
           </div>
         )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-border/50">
+            <span className="text-xs text-muted-foreground">
+              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} de {totalCount}
+            </span>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-          <div className="glass-card w-full max-w-lg p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">Nova Transação</h2>
-              <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Tipo</label>
-                  <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
-                    <option>Saída</option>
-                    <option>Entrada</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Valor (R$)</label>
-                  <input type="number" step="0.01" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} placeholder="0,00" className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Data</label>
-                  <input type="date" value={form.data} onChange={e => setForm(f => ({ ...f, data: e.target.value }))} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Categoria</label>
-                  <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
-                    {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-              </div>
+      {/* Detail Drawer */}
+      <TransacaoDetailDrawer
+        transacao={selectedTransacao}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onUpdated={fetchData}
+      />
+
+      {/* New Transaction Dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="sm:max-w-lg bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Nova Transação</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Descrição</label>
-                <input type="text" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Ex: Cimento CP-II" className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Forma de Pagamento</label>
-                <select value={form.forma_pagamento} onChange={e => setForm(f => ({ ...f, forma_pagamento: e.target.value }))} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
-                  <option>PIX</option>
-                  <option>Cartão</option>
-                  <option>Boleto</option>
-                  <option>Dinheiro</option>
-                  <option>Transferência</option>
+                <Label className="text-xs text-muted-foreground">Tipo</Label>
+                <select value={form.tipo} onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-1">
+                  <option>Saída</option>
+                  <option>Entrada</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Observações</label>
-                <textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
+                <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
+                <Input type="number" step="0.01" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} placeholder="0,00" className="mt-1" />
               </div>
-              <button type="submit" disabled={saving} className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors">
-                {saving ? "Salvando..." : "Registrar Transação"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">Data</Label>
+                <Input type="date" value={form.data} onChange={e => setForm(f => ({ ...f, data: e.target.value }))} className="mt-1" />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Categoria</Label>
+                <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-1">
+                  {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Descrição</Label>
+              <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Ex: Cimento CP-II" className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Forma de Pagamento</Label>
+              <select value={form.forma_pagamento} onChange={e => setForm(f => ({ ...f, forma_pagamento: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-1">
+                {FORMAS_PAGAMENTO.map(f => <option key={f}>{f}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Observações</Label>
+              <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} className="mt-1" />
+            </div>
+            <Button type="submit" disabled={saving} className="w-full">
+              {saving ? "Salvando..." : "Registrar Transação"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

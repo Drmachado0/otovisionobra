@@ -3,8 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { Plus, Search, X, Package, Truck, Clock } from "lucide-react";
+import { Plus, Search, Package, Truck, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Compra {
   id: string;
@@ -18,9 +22,9 @@ interface Compra {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  Pedido: "bg-warning/10 text-warning",
-  Entregue: "bg-success/10 text-success",
-  Cancelado: "bg-destructive/10 text-destructive",
+  Pedido: "badge-warning",
+  Entregue: "badge-success",
+  Cancelado: "badge-danger",
 };
 
 export default function ComprasPage() {
@@ -121,36 +125,34 @@ export default function ComprasPage() {
 
   return (
     <div className="space-y-6 animate-slide-in">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between page-header">
         <div>
           <h1 className="text-2xl font-bold">Compras</h1>
           <p className="text-sm text-muted-foreground">Controle de aquisições da obra</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+        <Button onClick={() => setShowForm(true)} className="gap-2">
           <Plus className="w-4 h-4" /> Nova Compra
-        </button>
+        </Button>
       </div>
 
       {/* Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="stat-card-info p-4">
-          <div className="flex items-center gap-2 mb-1"><Package className="w-4 h-4 text-info" /><span className="text-xs text-muted-foreground uppercase">Total</span></div>
-          <p className="text-lg font-bold">{formatCurrency(totalCompras)}</p>
-        </div>
-        <div className="stat-card-success p-4">
-          <div className="flex items-center gap-2 mb-1"><Truck className="w-4 h-4 text-success" /><span className="text-xs text-muted-foreground uppercase">Entregue</span></div>
-          <p className="text-lg font-bold text-success">{formatCurrency(totalEntregue)}</p>
-        </div>
-        <div className="stat-card-warning p-4">
-          <div className="flex items-center gap-2 mb-1"><Clock className="w-4 h-4 text-warning" /><span className="text-xs text-muted-foreground uppercase">Pendente</span></div>
-          <p className="text-lg font-bold text-warning">{formatCurrency(totalPendente)}</p>
-        </div>
+        {[
+          { cls: "stat-card-info", icon: <Package className="w-4 h-4 text-info" />, label: "Total", value: formatCurrency(totalCompras) },
+          { cls: "stat-card-success", icon: <Truck className="w-4 h-4 text-success" />, label: "Entregue", value: formatCurrency(totalEntregue), color: "text-success" },
+          { cls: "stat-card-warning", icon: <Clock className="w-4 h-4 text-warning" />, label: "Pendente", value: formatCurrency(totalPendente), color: "text-warning" },
+        ].map((m, i) => (
+          <div key={m.label} className={`${m.cls} p-4 animate-fade-in-up`} style={{ animationDelay: `${i * 100}ms` }}>
+            <div className="flex items-center gap-2 mb-1">{m.icon}<span className="text-xs text-muted-foreground uppercase">{m.label}</span></div>
+            <p className={`text-lg font-bold ${m.color || ""}`}>{m.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <input type="text" placeholder="Buscar compras..." value={search} onChange={e => setSearch(e.target.value)} className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+        <Input placeholder="Buscar compras..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
       </div>
 
       {/* Table */}
@@ -167,22 +169,24 @@ export default function ComprasPage() {
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Data</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Fornecedor</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Categoria</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-muted-foreground uppercase hidden md:table-cell">Pagamento</th>
                   <th className="text-right px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Valor</th>
                   <th className="text-center px-4 py-3 text-xs font-medium text-muted-foreground uppercase">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((c) => (
-                  <tr key={c.id} className="border-b border-border/30 hover:bg-accent/50 transition-colors">
+                  <tr key={c.id} className="table-row-interactive">
                     <td className="px-4 py-3 text-muted-foreground">{formatDate(c.data)}</td>
                     <td className="px-4 py-3 font-medium">{c.fornecedor || "-"}</td>
-                    <td className="px-4 py-3"><span className="px-2 py-1 rounded-md bg-secondary text-xs">{c.categoria}</span></td>
+                    <td className="px-4 py-3"><span className="badge-muted">{c.categoria}</span></td>
+                    <td className="px-4 py-3 hidden md:table-cell text-muted-foreground text-xs">{c.forma_pagamento || "-"}</td>
                     <td className="px-4 py-3 text-right font-semibold">{formatCurrency(Number(c.valor_total))}</td>
                     <td className="px-4 py-3 text-center">
                       <select
                         value={c.status_entrega}
-                        onChange={e => updateStatus(c.id, e.target.value)}
-                        className={`px-2 py-1 rounded-md text-xs font-medium border-0 cursor-pointer ${STATUS_COLORS[c.status_entrega] || "bg-secondary"}`}
+                        onChange={e => { e.stopPropagation(); updateStatus(c.id, e.target.value); }}
+                        className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer bg-transparent ${STATUS_COLORS[c.status_entrega] || "badge-muted"}`}
                       >
                         <option>Pedido</option>
                         <option>Entregue</option>
@@ -197,54 +201,51 @@ export default function ComprasPage() {
         )}
       </div>
 
-      {/* Modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-          <div className="glass-card w-full max-w-lg p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">Nova Compra</h2>
-              <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+      {/* Dialog */}
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="sm:max-w-lg bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Nova Compra</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label className="text-xs text-muted-foreground">Fornecedor</Label>
+              <Input value={form.fornecedor} onChange={e => setForm(f => ({ ...f, fornecedor: e.target.value }))} className="mt-1" />
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Fornecedor</label>
-                <input type="text" value={form.fornecedor} onChange={e => setForm(f => ({ ...f, fornecedor: e.target.value }))} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Valor (R$)</label>
-                  <input type="number" step="0.01" value={form.valor_total} onChange={e => setForm(f => ({ ...f, valor_total: e.target.value }))} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Data</label>
-                  <input type="date" value={form.data} onChange={e => setForm(f => ({ ...f, data: e.target.value }))} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Categoria</label>
-                  <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
-                    <option>Material</option><option>Mão de Obra</option><option>Equipamento</option><option>Serviço</option><option>Outro</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Pagamento</label>
-                  <select value={form.forma_pagamento} onChange={e => setForm(f => ({ ...f, forma_pagamento: e.target.value }))} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
-                    <option>PIX</option><option>Cartão</option><option>Boleto</option><option>Dinheiro</option>
-                  </select>
-                </div>
+                <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
+                <Input type="number" step="0.01" value={form.valor_total} onChange={e => setForm(f => ({ ...f, valor_total: e.target.value }))} className="mt-1" />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">Descrição</label>
-                <input type="text" value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} className="w-full px-3 py-2 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                <Label className="text-xs text-muted-foreground">Data</Label>
+                <Input type="date" value={form.data} onChange={e => setForm(f => ({ ...f, data: e.target.value }))} className="mt-1" />
               </div>
-              <button type="submit" disabled={saving} className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors">
-                {saving ? "Salvando..." : "Registrar Compra"}
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-muted-foreground">Categoria</Label>
+                <select value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-1">
+                  <option>Material</option><option>Mão de Obra</option><option>Equipamento</option><option>Serviço</option><option>Outro</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Pagamento</Label>
+                <select value={form.forma_pagamento} onChange={e => setForm(f => ({ ...f, forma_pagamento: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-1">
+                  <option>PIX</option><option>Cartão</option><option>Boleto</option><option>Dinheiro</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Descrição</Label>
+              <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} className="mt-1" />
+            </div>
+            <Button type="submit" disabled={saving} className="w-full">
+              {saving ? "Salvando..." : "Registrar Compra"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

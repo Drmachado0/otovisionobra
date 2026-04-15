@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { formatCurrency } from "@/lib/formatters";
 import { Percent, CheckCircle, Clock, DollarSign } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 const PERCENTUAL_COMISSAO = 8;
 
@@ -52,29 +53,24 @@ export default function ComissaoPage() {
 
   return (
     <div className="space-y-6 animate-slide-in">
-      <div>
+      <div className="page-header">
         <h1 className="text-2xl font-bold">Comissão</h1>
         <p className="text-sm text-muted-foreground">Comissão do construtor — {PERCENTUAL_COMISSAO}% sobre gastos</p>
       </div>
 
       {/* Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="stat-card-info p-5">
-          <div className="flex items-center gap-2 mb-2"><DollarSign className="w-4 h-4 text-info" /><span className="text-xs text-muted-foreground uppercase">Base (Gastos)</span></div>
-          <p className="text-xl font-bold">{formatCurrency(totalGasto)}</p>
-        </div>
-        <div className="stat-card-primary p-5">
-          <div className="flex items-center gap-2 mb-2"><Percent className="w-4 h-4 text-primary" /><span className="text-xs text-muted-foreground uppercase">Comissão Total</span></div>
-          <p className="text-xl font-bold">{formatCurrency(comissaoTotal)}</p>
-        </div>
-        <div className="stat-card-success p-5">
-          <div className="flex items-center gap-2 mb-2"><CheckCircle className="w-4 h-4 text-success" /><span className="text-xs text-muted-foreground uppercase">Pago</span></div>
-          <p className="text-xl font-bold text-success">{formatCurrency(comissaoPaga)}</p>
-        </div>
-        <div className="stat-card-warning p-5">
-          <div className="flex items-center gap-2 mb-2"><Clock className="w-4 h-4 text-warning" /><span className="text-xs text-muted-foreground uppercase">Pendente</span></div>
-          <p className="text-xl font-bold text-warning">{formatCurrency(Math.max(comissaoPendente, 0))}</p>
-        </div>
+        {[
+          { cls: "stat-card-info", icon: <DollarSign className="w-4 h-4 text-info" />, label: "Base (Gastos)", value: formatCurrency(totalGasto) },
+          { cls: "stat-card-primary", icon: <Percent className="w-4 h-4 text-primary" />, label: "Comissão Total", value: formatCurrency(comissaoTotal) },
+          { cls: "stat-card-success", icon: <CheckCircle className="w-4 h-4 text-success" />, label: "Pago", value: formatCurrency(comissaoPaga), color: "text-success" },
+          { cls: "stat-card-warning", icon: <Clock className="w-4 h-4 text-warning" />, label: "Pendente", value: formatCurrency(Math.max(comissaoPendente, 0)), color: "text-warning" },
+        ].map((c, i) => (
+          <div key={c.label} className={`${c.cls} p-5 animate-fade-in-up`} style={{ animationDelay: `${i * 100}ms` }}>
+            <div className="flex items-center gap-2 mb-2">{c.icon}<span className="text-xs text-muted-foreground uppercase">{c.label}</span></div>
+            <p className={`text-xl font-bold ${c.color || ""}`}>{c.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Progress */}
@@ -85,12 +81,7 @@ export default function ComissaoPage() {
             {comissaoTotal > 0 ? `${((comissaoPaga / comissaoTotal) * 100).toFixed(1)}%` : "0%"}
           </span>
         </div>
-        <div className="h-3 rounded-full bg-secondary overflow-hidden">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-700"
-            style={{ width: `${comissaoTotal > 0 ? Math.min((comissaoPaga / comissaoTotal) * 100, 100) : 0}%` }}
-          />
-        </div>
+        <Progress value={comissaoTotal > 0 ? Math.min((comissaoPaga / comissaoTotal) * 100, 100) : 0} className="h-3" />
       </div>
 
       {/* History */}
@@ -99,16 +90,18 @@ export default function ComissaoPage() {
         {comissoes.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">Nenhum pagamento registrado</p>
         ) : (
-          <div className="space-y-3">
-            {comissoes.map((c) => (
-              <div key={c.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+          <div className="space-y-1">
+            {comissoes.map((c, i) => (
+              <div key={c.id} className="flex items-center justify-between py-2.5 px-2 rounded-lg transition-colors hover:bg-accent/50 animate-fade-in-up" style={{ animationDelay: `${i * 60}ms` }}>
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${c.pago ? "bg-success/10" : "bg-warning/10"}`}>
                     {c.pago ? <CheckCircle className="w-4 h-4 text-success" /> : <Clock className="w-4 h-4 text-warning" />}
                   </div>
                   <div>
                     <p className="text-sm font-medium">{c.mes || "Sem mês"}</p>
-                    <p className="text-xs text-muted-foreground">{c.pago ? "Pago" : "Pendente"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {c.pago ? <span className="badge-success text-[10px]">Pago</span> : <span className="badge-warning text-[10px]">Pendente</span>}
+                    </p>
                   </div>
                 </div>
                 <span className="text-sm font-semibold">{formatCurrency(Number(c.valor))}</span>

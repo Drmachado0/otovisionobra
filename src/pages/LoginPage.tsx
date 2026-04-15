@@ -2,6 +2,9 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -27,7 +30,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="glass-card w-full max-w-sm p-8 space-y-6">
+      <div className="glass-card w-full max-w-sm p-8 space-y-6 animate-scale-in">
         <div className="text-center">
           <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mx-auto mb-3">
             <Building2 className="w-6 h-6 text-primary" />
@@ -38,17 +41,17 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+            <Label className="text-xs text-muted-foreground">Email</Label>
+            <Input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="mt-1" />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Senha</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
+            <Label className="text-xs text-muted-foreground">Senha</Label>
+            <Input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} className="mt-1" />
           </div>
-          <button type="submit" disabled={loading} className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors">
+          <Button type="submit" disabled={loading} className="w-full gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {isSignUp ? "Criar Conta" : "Entrar"}
-          </button>
+          </Button>
         </form>
 
         <p className="text-center text-xs text-muted-foreground">
