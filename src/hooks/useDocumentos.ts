@@ -147,31 +147,51 @@ export function useDocumentos() {
     await supabase.from("obra_documentos_processados").update({ storage_path: storagePath, status_processamento: "processando" } as any).eq("id", docId);
     await registrarEvento(docId, "upload_storage", "sucesso", "Arquivo salvo no storage");
 
-    // Read file text
+    // Read file content — text for CSV/TXT, base64 for PDF/images
     let texto = "";
-    if (file.type === "text/plain" || file.type === "text/csv" || file.name.endsWith(".txt") || file.name.endsWith(".csv")) {
+    let base64Content = "";
+    let mediaType = "";
+    const isTextFile = file.type === "text/plain" || file.type === "text/csv" || file.name.endsWith(".txt") || file.name.endsWith(".csv");
+    const isPdf = file.type === "application/pdf" || file.name.endsWith(".pdf");
+    const isImage = file.type.startsWith("image/") || /\.(jpg|jpeg|png|webp)$/i.test(file.name);
+
+    if (isTextFile) {
       texto = await file.text();
+      if (texto.trim().length < 5) {
+        await supabase.from("obra_documentos_processados").update({ status_processamento: "erro", motivo_erro: "Arquivo sem conteúdo legível" } as any).eq("id", docId);
+        await registrarEvento(docId, "extracao_texto", "erro", "Conteúdo vazio");
+        await fetchDocumentos();
+        return docId;
+      }
+    } else if (isPdf || isImage) {
+      // Convert to base64 for Claude vision/document processing
+      const buffer = await file.arrayBuffer();
+      base64Content = btoa(
+        new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
+      );
+      mediaType = isPdf ? "application/pdf" : file.type || "image/jpeg";
     } else {
-      // For PDF/images we'd need OCR — for now, prompt user
-      toast.info("Para PDFs e imagens, cole o texto extraído na revisão");
-      await supabase.from("obra_documentos_processados").update({ status_processamento: "revisao", motivo_revisao: "Arquivo requer extração manual de texto (PDF/imagem)" } as any).eq("id", docId);
-      await registrarEvento(docId, "extracao_texto", "revisao", "Tipo de arquivo requer extração manual");
+      toast.info("Formato não suportado. Use PDF, imagem, CSV ou TXT.");
+      await supabase.from("obra_documentos_processados").update({ status_processamento: "revisao", motivo_revisao: "Formato de arquivo não suportado automaticamente" } as any).eq("id", docId);
+      await registrarEvento(docId, "extracao_texto", "revisao", "Formato não suportado: " + file.type);
       await fetchDocumentos();
       return docId;
     }
 
-    if (texto.trim().length < 5) {
-      await supabase.from("obra_documentos_processados").update({ status_processamento: "erro", motivo_erro: "Arquivo sem conteúdo legível" } as any).eq("id", docId);
-      await registrarEvento(docId, "extracao_texto", "erro", "Conteúdo vazio");
-      await fetchDocumentos();
-      return docId;
-    }
-
-    // Call AI
-    await registrarEvento(docId, "ia_extracao", "processando", "Enviando para IA...");
+    // Call Claude AI via edge function
+    await registrarEvento(docId, "ia_extracao", "processando", "Enviando para Claude IA...");
     try {
-      const { data: aiData, error: aiErr } = await supabase.functions.invoke("processar-pasta", {
-        body: { texto, nome_arquivo: file.name, tipo_arquivo: file.type },
+      const { data: aiData, error: aiErr } = await supabase.functions.invoke("processar-documento-ia", {
+        body: {
+          texto: texto || undefined,
+          base64_content: base64Content || undefined,
+          media_type: mediaType || undefined,
+          nome_arquivo: file.name,
+          tipo_arquivo: file.type,
+          documento_id: docId,
+          user_id: user.id,
+          persistir: true,
+        },
       });
       if (aiErr) throw aiErr;
 
