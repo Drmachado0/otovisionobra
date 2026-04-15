@@ -240,12 +240,12 @@ export default function TransacaoDetailDrawer({ transacao, open, onOpenChange, o
 
       <ConfirmDialog
         open={showDelete}
-        onOpenChange={setShowDelete}
         title="Excluir Transação"
-        description="Tem certeza que deseja excluir esta transação? A ação pode ser desfeita."
-        confirmText={deleting ? "Excluindo..." : "Excluir"}
+        message="Tem certeza que deseja excluir esta transação? A ação pode ser desfeita."
+        confirmLabel={deleting ? "Excluindo..." : "Excluir"}
         onConfirm={handleDelete}
-        variant="destructive"
+        onCancel={() => setShowDelete(false)}
+        variant="danger"
       />
     </>
   );
