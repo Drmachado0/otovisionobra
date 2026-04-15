@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import OrigemBadge from "@/components/OrigemBadge";
 import { Separator } from "@/components/ui/separator";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import {
@@ -57,16 +58,6 @@ const CATEGORIAS = [
 ];
 
 const FORMAS_PAGAMENTO = ["PIX", "Cartão", "Boleto", "Dinheiro", "Transferência"];
-
-function getOrigemBadge(origem?: string | null) {
-  switch (origem) {
-    case "ia": return <span className="badge-info">IA</span>;
-    case "compra": return <span className="badge-warning">Compra</span>;
-    case "conciliacao": return <span className="badge-primary">Conciliação</span>;
-    case "pasta": return <span className="badge-success">Pasta</span>;
-    default: return <span className="badge-muted">Manual</span>;
-  }
-}
 
 export default function TransacaoDetailDrawer({ transacao, open, onOpenChange, onUpdated }: Props) {
   const [editing, setEditing] = useState(false);
@@ -158,7 +149,7 @@ export default function TransacaoDetailDrawer({ transacao, open, onOpenChange, o
           <div className="space-y-5 pb-6">
             {/* Badges row */}
             <div className="flex flex-wrap gap-2">
-              {getOrigemBadge(t.origem_tipo)}
+              <OrigemBadge origem={t.origem_tipo} />
               {t.conciliado ? (
                 <span className="badge-success"><CheckCircle2 className="w-3 h-3 mr-1" />Conciliado</span>
               ) : (

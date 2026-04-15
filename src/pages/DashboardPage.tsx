@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import OrigemBadge from "@/components/OrigemBadge";
 import TransacaoDetailDrawer, { type TransacaoFull } from "@/components/TransacaoDetailDrawer";
 
 interface TransacaoRow {
@@ -33,15 +34,6 @@ interface ConfigRow {
   orcamento_total: number;
   area_construida: number;
   data_inicio: string;
-}
-
-function getOrigemBadge(origem?: string | null) {
-  switch (origem) {
-    case "ia": return <span className="badge-info text-[10px]">IA</span>;
-    case "compra": return <span className="badge-warning text-[10px]">Compra</span>;
-    case "conciliacao": return <span className="badge-primary text-[10px]">Conciliação</span>;
-    default: return null;
-  }
 }
 
 export default function DashboardPage() {
@@ -254,7 +246,7 @@ export default function DashboardPage() {
                           <CreditCard className="w-2.5 h-2.5" />{t.forma_pagamento}
                         </span>
                       )}
-                      {getOrigemBadge(t.origem_tipo)}
+                      <OrigemBadge origem={t.origem_tipo} compact />
                     </div>
                   </div>
                 </div>

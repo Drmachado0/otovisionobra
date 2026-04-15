@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import OrigemBadge from "@/components/OrigemBadge";
 import TransacaoDetailDrawer, { type TransacaoFull } from "@/components/TransacaoDetailDrawer";
 
 const CATEGORIAS = [
@@ -23,16 +23,6 @@ const CATEGORIAS = [
 
 const FORMAS_PAGAMENTO = ["PIX", "Cartão", "Boleto", "Dinheiro", "Transferência"];
 const PAGE_SIZE = 50;
-
-function getOrigemBadge(origem?: string | null) {
-  switch (origem) {
-    case "ia": return <span className="badge-info text-[10px]">IA</span>;
-    case "compra": return <span className="badge-warning text-[10px]">Compra</span>;
-    case "conciliacao": return <span className="badge-primary text-[10px]">Conciliação</span>;
-    case "pasta": return <span className="badge-success text-[10px]">Pasta</span>;
-    default: return <span className="badge-muted text-[10px]">Manual</span>;
-  }
-}
 
 export default function FluxoCaixaPage() {
   const { user } = useAuth();
@@ -243,7 +233,7 @@ export default function FluxoCaixaPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
-                      {getOrigemBadge(t.origem_tipo)}
+                      <OrigemBadge origem={t.origem_tipo} compact />
                     </td>
                     <td className={`px-4 py-3 text-right font-semibold ${
                       t.tipo === "Entrada" ? "text-success" : "text-destructive"
