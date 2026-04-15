@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,14 +7,25 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
-import DashboardPage from "@/pages/DashboardPage";
-import FluxoCaixaPage from "@/pages/FluxoCaixaPage";
-import ComprasPage from "@/pages/ComprasPage";
-import LeitorIAPage from "@/pages/LeitorIAPage";
-import ComissaoPage from "@/pages/ComissaoPage";
 import NotFound from "./pages/NotFound.tsx";
 
+// Lazy loaded pages
+const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
+const FluxoCaixaPage = lazy(() => import("@/pages/FluxoCaixaPage"));
+const ComprasPage = lazy(() => import("@/pages/ComprasPage"));
+const LeitorIAPage = lazy(() => import("@/pages/LeitorIAPage"));
+const ComissaoPage = lazy(() => import("@/pages/ComissaoPage"));
+const AuditoriaPage = lazy(() => import("@/pages/AuditoriaPage"));
+
 const queryClient = new QueryClient();
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function AuthenticatedApp() {
   const { user, loading } = useAuth();
@@ -30,14 +42,17 @@ function AuthenticatedApp() {
 
   return (
     <AppLayout>
-      <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/fluxo" element={<FluxoCaixaPage />} />
-        <Route path="/compras" element={<ComprasPage />} />
-        <Route path="/leitor-ia" element={<LeitorIAPage />} />
-        <Route path="/comissao" element={<ComissaoPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/fluxo" element={<FluxoCaixaPage />} />
+          <Route path="/compras" element={<ComprasPage />} />
+          <Route path="/leitor-ia" element={<LeitorIAPage />} />
+          <Route path="/comissao" element={<ComissaoPage />} />
+          <Route path="/auditoria" element={<AuditoriaPage />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </AppLayout>
   );
 }

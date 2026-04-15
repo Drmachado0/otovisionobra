@@ -9,19 +9,36 @@ import {
   Menu,
   X,
   Building2,
+  History,
 } from "lucide-react";
+import UserMenu from "@/components/UserMenu";
+import NotificationBell from "@/components/NotificationBell";
+import { useUserRole, type AppRole } from "@/hooks/useUserRole";
 
-const navItems = [
+interface NavItem {
+  path: string;
+  label: string;
+  icon: any;
+  allowedRoles?: AppRole[];
+}
+
+const navItems: NavItem[] = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/fluxo", label: "Fluxo de Caixa", icon: ArrowLeftRight },
-  { path: "/compras", label: "Compras", icon: ShoppingCart },
-  { path: "/leitor-ia", label: "Leitor IA", icon: FileText },
-  { path: "/comissao", label: "Comissão", icon: Percent },
+  { path: "/fluxo", label: "Fluxo de Caixa", icon: ArrowLeftRight, allowedRoles: ["admin", "financeiro"] },
+  { path: "/compras", label: "Compras", icon: ShoppingCart, allowedRoles: ["admin", "financeiro"] },
+  { path: "/leitor-ia", label: "Leitor IA", icon: FileText, allowedRoles: ["admin", "financeiro"] },
+  { path: "/comissao", label: "Comissão", icon: Percent, allowedRoles: ["admin", "construtor"] },
+  { path: "/auditoria", label: "Auditoria", icon: History, allowedRoles: ["admin"] },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { role } = useUserRole();
+
+  const visibleItems = navItems.filter(
+    (item) => !item.allowedRoles || (role && item.allowedRoles.includes(role))
+  );
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -38,7 +55,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
+          {visibleItems.map((item) => {
             const active = location.pathname === item.path;
             return (
               <Link
@@ -65,23 +82,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Mobile header */}
+      {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card">
-          <div className="flex items-center gap-2">
+        {/* Header */}
+        <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/80 backdrop-blur-sm">
+          <div className="flex items-center gap-2 lg:hidden">
+            <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground p-1">
+              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
             <Building2 className="w-5 h-5 text-primary" />
             <span className="font-bold text-sm">OTOVISION</span>
           </div>
-          <button onClick={() => setMobileOpen(!mobileOpen)} className="text-foreground">
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <div className="hidden lg:block" />
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <UserMenu />
+          </div>
         </header>
 
         {/* Mobile nav overlay */}
         {mobileOpen && (
           <div className="lg:hidden absolute inset-0 z-50 bg-background/95 backdrop-blur-sm pt-14">
             <nav className="px-4 py-4 space-y-1">
-              {navItems.map((item) => {
+              {visibleItems.map((item) => {
                 const active = location.pathname === item.path;
                 return (
                   <Link
