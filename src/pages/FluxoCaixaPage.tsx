@@ -41,6 +41,8 @@ export default function FluxoCaixaPage() {
   const [selectedTransacao, setSelectedTransacao] = useState<TransacaoFull | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const [contas, setContas] = useState<{ id: string; nome: string }[]>([]);
+
   const [form, setForm] = useState({
     tipo: "Saída",
     valor: "",
@@ -49,6 +51,7 @@ export default function FluxoCaixaPage() {
     descricao: "",
     forma_pagamento: "PIX",
     observacoes: "",
+    conta_id: "",
   });
 
   const fetchData = useCallback(async () => {
@@ -75,6 +78,11 @@ export default function FluxoCaixaPage() {
   }, [page, filterTipo, filterCategoria, dateFrom, dateTo, search]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    supabase.from("obra_contas_financeiras").select("id, nome").eq("ativa", true).then(({ data }) => {
+      if (data) setContas(data);
+    });
+  }, []);
   useRealtimeSubscription("obra_transacoes_fluxo", fetchData);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -95,7 +103,7 @@ export default function FluxoCaixaPage() {
       observacoes: form.observacoes,
       recorrencia: "Única",
       referencia: "",
-      conta_id: "",
+      conta_id: form.conta_id,
     } as any);
     setSaving(false);
     if (error) {
@@ -103,7 +111,7 @@ export default function FluxoCaixaPage() {
     } else {
       toast.success("Transação registrada!");
       setShowForm(false);
-      setForm({ tipo: "Saída", valor: "", data: new Date().toISOString().split("T")[0], categoria: "Material", descricao: "", forma_pagamento: "PIX", observacoes: "" });
+      setForm({ tipo: "Saída", valor: "", data: new Date().toISOString().split("T")[0], categoria: "Material", descricao: "", forma_pagamento: "PIX", observacoes: "", conta_id: "" });
       fetchData();
     }
   };
@@ -313,6 +321,13 @@ export default function FluxoCaixaPage() {
               <Label className="text-xs text-muted-foreground">Forma de Pagamento</Label>
               <select value={form.forma_pagamento} onChange={e => setForm(f => ({ ...f, forma_pagamento: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-1">
                 {FORMAS_PAGAMENTO.map(f => <option key={f}>{f}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Conta</Label>
+              <select value={form.conta_id} onChange={e => setForm(f => ({ ...f, conta_id: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-1">
+                <option value="">Sem conta vinculada</option>
+                {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
             <div>
