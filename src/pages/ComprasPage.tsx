@@ -45,6 +45,7 @@ export default function ComprasPage() {
     const { data } = await supabase
       .from("obra_compras")
       .select("id, fornecedor, descricao, categoria, valor_total, data, status_entrega, forma_pagamento")
+      .is("deleted_at", null)
       .order("data", { ascending: false })
       .limit(500);
     if (data) setCompras(data as Compra[]);

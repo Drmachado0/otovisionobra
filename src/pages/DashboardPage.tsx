@@ -32,6 +32,7 @@ export default function DashboardPage() {
       supabase
         .from("obra_transacoes_fluxo")
         .select("tipo, valor, categoria, data, descricao")
+        .is("deleted_at", null)
         .order("data", { ascending: false })
         .limit(100),
     ]);
@@ -67,8 +68,16 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-6 animate-slide-in">
+        <div><div className="h-7 w-40 rounded bg-muted animate-pulse" /><div className="h-4 w-64 rounded bg-muted animate-pulse mt-2" /></div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="glass-card p-5 space-y-3 animate-pulse">
+              <div className="flex justify-between"><div className="h-3 w-20 rounded bg-muted" /><div className="h-5 w-5 rounded bg-muted" /></div>
+              <div className="h-6 w-28 rounded bg-muted" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

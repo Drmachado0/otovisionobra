@@ -51,6 +51,7 @@ export default function FluxoCaixaPage() {
     const { data } = await supabase
       .from("obra_transacoes_fluxo")
       .select("id, tipo, valor, data, categoria, descricao, forma_pagamento, observacoes")
+      .is("deleted_at", null)
       .order("data", { ascending: false })
       .limit(500);
     if (data) setTransacoes(data as Transacao[]);

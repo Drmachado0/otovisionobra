@@ -21,8 +21,8 @@ export default function ComissaoPage() {
 
   const fetchData = useCallback(async () => {
     const [transRes, comRes] = await Promise.all([
-      supabase.from("obra_transacoes_fluxo").select("tipo, valor").eq("tipo", "Saída"),
-      supabase.from("obra_comissao_pagamentos").select("id, mes, valor, pago, data_pagamento").order("created_at", { ascending: false }),
+      supabase.from("obra_transacoes_fluxo").select("tipo, valor").eq("tipo", "Saída").is("deleted_at", null),
+      supabase.from("obra_comissao_pagamentos").select("id, mes, valor, pago, data_pagamento").is("deleted_at", null).order("created_at", { ascending: false }),
     ]);
 
     if (transRes.data) {
