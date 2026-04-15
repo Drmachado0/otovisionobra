@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { toast } from "sonner";
@@ -192,15 +193,15 @@ export function ComissaoDetailDrawer({ comissao, open, onOpenChange, onUpdated }
               <Button variant="outline" onClick={startEdit} className="w-full">
                 <Pencil className="w-4 h-4 mr-2" /> Editar
               </Button>
+              <Button variant="ghost" className="w-full text-destructive hover:text-destructive" onClick={() => setConfirmOpen(true)}>
+                <Trash2 className="w-4 h-4 mr-2" /> Excluir
+              </Button>
               <ConfirmDialog
+                open={confirmOpen}
                 title="Excluir Comissão"
-                description="Tem certeza que deseja excluir este registro de comissão?"
-                onConfirm={softDelete}
-                trigger={
-                  <Button variant="ghost" className="w-full text-destructive hover:text-destructive">
-                    <Trash2 className="w-4 h-4 mr-2" /> Excluir
-                  </Button>
-                }
+                message="Tem certeza que deseja excluir este registro de comissão?"
+                onConfirm={() => { setConfirmOpen(false); softDelete(); }}
+                onCancel={() => setConfirmOpen(false)}
               />
             </div>
           </>
