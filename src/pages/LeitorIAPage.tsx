@@ -17,6 +17,7 @@ interface DadosExtraidos {
   tipo: string;
   descricao: string;
   categoria: string;
+  tipo_movimentacao: "Entrada" | "Saída";
 }
 
 export default function LeitorIAPage() {
@@ -38,6 +39,9 @@ export default function LeitorIAPage() {
     tipo: ai.tipo_documento ?? "Outro",
     descricao: ai.descricao ?? "",
     categoria: ai.categoria_sugerida ?? "Outro",
+    // IA retorna "entrada"/"saida" — normaliza para o padrão do sistema
+    tipo_movimentacao:
+      ai.tipo_movimentacao === "entrada" ? "Entrada" : "Saída",
   });
 
   const processarDocumento = async () => {
@@ -132,7 +136,7 @@ export default function LeitorIAPage() {
 
     const { error } = await supabase.from("obra_transacoes_fluxo").insert({
       user_id: user.id,
-      tipo: "Saída",
+      tipo: dados.tipo_movimentacao,   // ← antes era "Saída" hardcoded
       valor: dados.valor,
       data: dados.data || new Date().toISOString().split("T")[0],
       categoria: dados.categoria || "Material",

@@ -72,7 +72,8 @@ export function useUserRole() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      setRole((data?.role as AppRole) ?? "admin");
+      // Segurança: sem registro de role → acesso mínimo (visualizador), nunca admin
+      setRole((data?.role as AppRole) ?? "visualizador");
       setLoading(false);
     };
 

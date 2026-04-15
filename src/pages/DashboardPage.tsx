@@ -42,15 +42,26 @@ export default function DashboardPage() {
   const [transacoes, setTransacoes] = useState<TransacaoRow[]>([]);
   const [etapas, setEtapas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedTransacao, setSelectedTransacao] = useState<TransacaoFull | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
+    setError(null);
     const [configRes, transRes, etapasRes] = await Promise.all([
       supabase.from("obra_config").select("orcamento_total, area_construida, data_inicio").limit(1).maybeSingle(),
       supabase.from("obra_transacoes_fluxo").select("id, tipo, valor, categoria, data, descricao, forma_pagamento, observacoes, origem_tipo, conciliado, recorrencia, conta_id, referencia, created_at").is("deleted_at", null).order("data", { ascending: false }).limit(100),
       supabase.from("obra_cronograma").select("nome, custo_previsto, custo_real, status, percentual_conclusao, fim_previsto"),
     ]);
+
+    // Erros são capturados e exibidos — não silenciados
+    const firstError = configRes.error ?? transRes.error ?? etapasRes.error;
+    if (firstError) {
+      setError(firstError.message);
+      setLoading(false);
+      return;
+    }
+
     if (configRes.data) setConfig(configRes.data as ConfigRow);
     if (transRes.data) {
       const rows = transRes.data as TransacaoRow[];
@@ -109,6 +120,26 @@ export default function DashboardPage() {
               <div className="h-6 w-28 rounded bg-muted" />
             </div>
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 animate-slide-in">
+        <div className="page-header">
+          <h1 className="text-2xl font-bold">Dashboard Executivo</h1>
+        </div>
+        <div className="glass-card p-6 flex items-center gap-4 border-destructive/20">
+          <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Erro ao carregar dados</p>
+            <p className="text-xs text-muted-foreground">{error}</p>
+          </div>
+          <button onClick={fetchData} className="ml-auto text-xs text-primary hover:underline">
+            Tentar novamente
+          </button>
         </div>
       </div>
     );

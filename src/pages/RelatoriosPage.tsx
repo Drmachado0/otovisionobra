@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useObraConfig } from "@/hooks/useObraConfig";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { toast } from "sonner";
 import {
@@ -7,6 +8,7 @@ import {
   Download,
   Filter,
   BarChart3,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,29 +17,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function RelatoriosPage() {
+  const { config } = useObraConfig();
+  const orcamento = config.orcamento_total;
   const [transacoes, setTransacoes] = useState<any[]>([]);
   const [compras, setCompras] = useState<any[]>([]);
   const [comissoes, setComissoes] = useState<any[]>([]);
   const [etapas, setEtapas] = useState<any[]>([]);
-  const [orcamento, setOrcamento] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [categoriaFiltro, setCategoriaFiltro] = useState("todas");
 
   const fetchData = useCallback(async () => {
-    const [configRes, transRes, comprasRes, comRes, etapasRes] = await Promise.all([
-      supabase.from("obra_config").select("orcamento_total").limit(1).maybeSingle(),
+    const [transRes, comprasRes, comRes, etapasRes] = await Promise.all([
       supabase.from("obra_transacoes_fluxo").select("*").is("deleted_at", null).order("data", { ascending: false }),
       supabase.from("obra_compras").select("*").is("deleted_at", null).order("data", { ascending: false }),
       supabase.from("obra_comissao_pagamentos").select("*").is("deleted_at", null).order("created_at", { ascending: false }),
       supabase.from("obra_cronograma").select("*").order("inicio_previsto", { ascending: true }),
     ]);
-    if (configRes.data) setOrcamento(Number(configRes.data.orcamento_total) || 0);
-    if (transRes.data) setTransacoes(transRes.data);
-    if (comprasRes.data) setCompras(comprasRes.data);
-    if (comRes.data) setComissoes(comRes.data);
-    if (etapasRes.data) setEtapas(etapasRes.data);
+    const firstError = transRes.error ?? comprasRes.error ?? comRes.error ?? etapasRes.error;
+    if (firstError) {
+      setFetchError(firstError.message);
+    } else {
+      if (transRes.data) setTransacoes(transRes.data);
+      if (comprasRes.data) setCompras(comprasRes.data);
+      if (comRes.data) setComissoes(comRes.data);
+      if (etapasRes.data) setEtapas(etapasRes.data);
+      setFetchError(null);
+    }
     setLoading(false);
   }, []);
 
@@ -87,6 +95,24 @@ export default function RelatoriosPage() {
       <div className="space-y-6 animate-slide-in">
         <div className="h-7 w-44 rounded bg-muted animate-pulse" />
         <div className="glass-card p-5 h-40 animate-pulse" />
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="space-y-6 animate-slide-in">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <BarChart3 className="w-6 h-6" /> Relatórios
+        </h1>
+        <div className="glass-card p-6 flex items-center gap-4 border-destructive/20">
+          <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Erro ao carregar relatórios</p>
+            <p className="text-xs text-muted-foreground">{fetchError}</p>
+          </div>
+          <button onClick={fetchData} className="text-xs text-primary hover:underline">Tentar novamente</button>
+        </div>
       </div>
     );
   }

@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
 import NotFound from "./pages/NotFound.tsx";
+import { PageErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const FluxoCaixaPage = lazy(() => import("@/pages/FluxoCaixaPage"));
@@ -24,7 +26,27 @@ const ConciliacaoPage = lazy(() => import("@/pages/ConciliacaoPage"));
 const ContasBancariasPage = lazy(() => import("@/pages/ContasBancariasPage"));
 const ConfiguracoesPage = lazy(() => import("@/pages/ConfiguracoesPage"));
 
-const queryClient = new QueryClient();
+/**
+ * QueryClient configurado para produção:
+ * - retry 1x apenas (padrão 3x causava múltiplas requisições em cadeia)
+ * - staleTime 30s para evitar refetch excessivo em navegação
+ * - sem retry em erros 4xx (não adianta tentar de novo)
+ */
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error: any) => {
+        if (error?.status >= 400 && error?.status < 500) return false;
+        return failureCount < 1;
+      },
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
 
 function PageLoader() {
   return (
@@ -49,25 +71,29 @@ function AuthenticatedApp() {
 
   return (
     <AppLayout>
-      <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/fluxo" element={<FluxoCaixaPage />} />
-          <Route path="/compras" element={<ComprasPage />} />
-          <Route path="/leitor-ia" element={<LeitorIAPage />} />
-          <Route path="/comissao" element={<ComissaoPage />} />
-          <Route path="/auditoria" element={<AuditoriaPage />} />
-          <Route path="/cronograma" element={<CronogramaPage />} />
-          <Route path="/previsao" element={<PrevisaoPage />} />
-          <Route path="/insights" element={<InsightsPage />} />
-          <Route path="/relatorios" element={<RelatoriosPage />} />
-          <Route path="/pasta-sync" element={<PastaMonitorPage />} />
-          <Route path="/conciliacao" element={<ConciliacaoPage />} />
-          <Route path="/contas" element={<ContasBancariasPage />} />
-          <Route path="/configuracoes" element={<ConfiguracoesPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
+      <ErrorBoundary>
+        <PageErrorBoundary>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/fluxo" element={<FluxoCaixaPage />} />
+              <Route path="/compras" element={<ComprasPage />} />
+              <Route path="/leitor-ia" element={<LeitorIAPage />} />
+              <Route path="/comissao" element={<ComissaoPage />} />
+              <Route path="/auditoria" element={<AuditoriaPage />} />
+              <Route path="/cronograma" element={<CronogramaPage />} />
+              <Route path="/previsao" element={<PrevisaoPage />} />
+              <Route path="/insights" element={<InsightsPage />} />
+              <Route path="/relatorios" element={<RelatoriosPage />} />
+              <Route path="/pasta-sync" element={<PastaMonitorPage />} />
+              <Route path="/conciliacao" element={<ConciliacaoPage />} />
+              <Route path="/contas" element={<ContasBancariasPage />} />
+              <Route path="/configuracoes" element={<ConfiguracoesPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </PageErrorBoundary>
+      </ErrorBoundary>
     </AppLayout>
   );
 }

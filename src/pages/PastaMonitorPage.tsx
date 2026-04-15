@@ -18,7 +18,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 };
 
 export default function PastaMonitorPage() {
-  const { documentos, loading, stats, uploadEProcessar, reprocessar, fetchDocumentos } = useDocumentos();
+  const { documentos, loading, fetchError, stats, uploadEProcessar, reprocessar, fetchDocumentos } = useDocumentos();
   const [uploading, setUploading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>("todos");
   const [searchTerm, setSearchTerm] = useState("");
@@ -142,6 +142,15 @@ export default function PastaMonitorPage() {
       {/* Documents table */}
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>
+      ) : fetchError ? (
+        <div className="glass-card p-6 flex items-center gap-4 border-destructive/20">
+          <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Erro ao carregar documentos</p>
+            <p className="text-xs text-muted-foreground">{fetchError}</p>
+          </div>
+          <button onClick={fetchDocumentos} className="text-xs text-primary hover:underline">Tentar novamente</button>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="glass-card p-12 text-center text-muted-foreground">
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />

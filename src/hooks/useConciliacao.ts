@@ -163,6 +163,7 @@ export function useConciliacao() {
   const [conciliacoes, setConciliacoes] = useState<Conciliacao[]>([]);
   const [sugestoes, setSugestoes] = useState<Sugestao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [stats, setStats] = useState<ConciliacaoStats>({
     total: 0, conciliado: 0, pendente: 0, divergente: 0, duplicidade: 0, taxaAutomacao: 0,
   });
@@ -178,6 +179,13 @@ export function useConciliacao() {
         supabase.from("obra_sugestoes_conciliacao").select("*").eq("user_id", user.id).order("score_compatibilidade", { ascending: false }),
       ]);
 
+      const firstError = movRes.error ?? txRes.error ?? concRes.error ?? sugRes.error;
+      if (firstError) {
+        setFetchError(firstError.message);
+        console.error("[useConciliacao.fetchAll]", firstError);
+        return;
+      }
+
       const movs = (movRes.data || []) as MovimentacaoExtraida[];
       const txs = (txRes.data || []) as Transacao[];
       const concs = (concRes.data || []) as Conciliacao[];
@@ -187,6 +195,7 @@ export function useConciliacao() {
       setTransacoes(txs);
       setConciliacoes(concs);
       setSugestoes(sugs);
+      setFetchError(null);
 
       // Stats
       const conciliados = concs.filter(c => c.status_conciliacao.includes("conciliado"));
@@ -203,6 +212,10 @@ export function useConciliacao() {
         duplicidade: duplicados.length,
         taxaAutomacao: conciliados.length > 0 ? (autoConc.length / conciliados.length) * 100 : 0,
       });
+    } catch (err: any) {
+      const msg = err?.message ?? "Erro desconhecido ao carregar conciliação";
+      setFetchError(msg);
+      console.error("[useConciliacao.fetchAll] catch:", err);
     } finally {
       setLoading(false);
     }
@@ -284,46 +297,55 @@ export function useConciliacao() {
   /* Manual conciliation */
   const conciliarManual = useCallback(async (movId: string, txId: string, obs: string = "") => {
     if (!user) return;
-    // Update or insert
-    const existing = conciliacoes.find(c => c.movimentacao_extraida_id === movId && !["desfeita"].includes(c.status_conciliacao));
-    if (existing) {
-      await supabase.from("obra_conciliacoes_bancarias").update({
-        transacao_id: txId,
-        status_conciliacao: "conciliado_manualmente",
-        tipo_conciliacao: "manual",
-        conciliado_por: user.id,
-        conciliado_em: new Date().toISOString(),
-        observacoes: obs,
-      }).eq("id", existing.id);
-      await supabase.from("obra_eventos_conciliacao").insert({
-        user_id: user.id,
-        conciliacao_id: existing.id,
-        acao: "conciliacao_manual",
-        detalhes: { movimentacao_id: movId, transacao_id: txId },
-      });
-    } else {
-      const { data } = await supabase.from("obra_conciliacoes_bancarias").insert({
-        user_id: user.id,
-        movimentacao_extraida_id: movId,
-        transacao_id: txId,
-        status_conciliacao: "conciliado_manualmente",
-        tipo_conciliacao: "manual",
-        conciliado_por: user.id,
-        conciliado_em: new Date().toISOString(),
-        observacoes: obs,
-      }).select("id").single();
-      if (data) {
+    try {
+      const existing = conciliacoes.find(c => c.movimentacao_extraida_id === movId && !["desfeita"].includes(c.status_conciliacao));
+      if (existing) {
+        const { error } = await supabase.from("obra_conciliacoes_bancarias").update({
+          transacao_id: txId,
+          status_conciliacao: "conciliado_manualmente",
+          tipo_conciliacao: "manual",
+          conciliado_por: user.id,
+          conciliado_em: new Date().toISOString(),
+          observacoes: obs,
+        }).eq("id", existing.id);
+        if (error) throw error;
         await supabase.from("obra_eventos_conciliacao").insert({
           user_id: user.id,
-          conciliacao_id: data.id,
+          conciliacao_id: existing.id,
           acao: "conciliacao_manual",
           detalhes: { movimentacao_id: movId, transacao_id: txId },
         });
+      } else {
+        const { data, error } = await supabase.from("obra_conciliacoes_bancarias").insert({
+          user_id: user.id,
+          movimentacao_extraida_id: movId,
+          transacao_id: txId,
+          status_conciliacao: "conciliado_manualmente",
+          tipo_conciliacao: "manual",
+          conciliado_por: user.id,
+          conciliado_em: new Date().toISOString(),
+          observacoes: obs,
+        }).select("id").single();
+        if (error) throw error;
+        if (data) {
+          await supabase.from("obra_eventos_conciliacao").insert({
+            user_id: user.id,
+            conciliacao_id: data.id,
+            acao: "conciliacao_manual",
+            detalhes: { movimentacao_id: movId, transacao_id: txId },
+          });
+        }
       }
+      const { error: txErr } = await supabase.from("obra_transacoes_fluxo")
+        .update({ conciliado: true, conciliado_em: new Date().toISOString() })
+        .eq("id", txId);
+      if (txErr) throw txErr;
+      toast.success("Conciliação realizada com sucesso");
+      await fetchAll();
+    } catch (err: any) {
+      toast.error("Erro ao conciliar: " + (err?.message ?? "Tente novamente"));
+      console.error("[useConciliacao.conciliarManual]", err);
     }
-    await supabase.from("obra_transacoes_fluxo").update({ conciliado: true, conciliado_em: new Date().toISOString() }).eq("id", txId);
-    toast.success("Conciliação realizada com sucesso");
-    await fetchAll();
   }, [user, conciliacoes, fetchAll]);
 
   /* Undo conciliation */
@@ -331,40 +353,54 @@ export function useConciliacao() {
     if (!user) return;
     const conc = conciliacoes.find(c => c.id === concId);
     if (!conc) return;
-    await supabase.from("obra_conciliacoes_bancarias").update({
-      status_conciliacao: "desfeita",
-      desfeito_por: user.id,
-      desfeito_em: new Date().toISOString(),
-      motivo_desfazer: motivo,
-    }).eq("id", concId);
-    if (conc.transacao_id) {
-      await supabase.from("obra_transacoes_fluxo").update({ conciliado: false, conciliado_em: null }).eq("id", conc.transacao_id);
+    try {
+      const { error } = await supabase.from("obra_conciliacoes_bancarias").update({
+        status_conciliacao: "desfeita",
+        desfeito_por: user.id,
+        desfeito_em: new Date().toISOString(),
+        motivo_desfazer: motivo,
+      }).eq("id", concId);
+      if (error) throw error;
+      if (conc.transacao_id) {
+        await supabase.from("obra_transacoes_fluxo")
+          .update({ conciliado: false, conciliado_em: null })
+          .eq("id", conc.transacao_id);
+      }
+      await supabase.from("obra_eventos_conciliacao").insert({
+        user_id: user.id,
+        conciliacao_id: concId,
+        acao: "desfazer_conciliacao",
+        detalhes: { motivo },
+      });
+      toast.success("Conciliação desfeita");
+      await fetchAll();
+    } catch (err: any) {
+      toast.error("Erro ao desfazer: " + (err?.message ?? "Tente novamente"));
+      console.error("[useConciliacao.desfazerConciliacao]", err);
     }
-    await supabase.from("obra_eventos_conciliacao").insert({
-      user_id: user.id,
-      conciliacao_id: concId,
-      acao: "desfazer_conciliacao",
-      detalhes: { motivo },
-    });
-    toast.success("Conciliação desfeita");
-    await fetchAll();
   }, [user, conciliacoes, fetchAll]);
 
   /* Mark as divergent */
   const marcarDivergente = useCallback(async (concId: string, obs: string) => {
     if (!user) return;
-    await supabase.from("obra_conciliacoes_bancarias").update({
-      status_conciliacao: "divergente",
-      observacoes: obs,
-    }).eq("id", concId);
-    await supabase.from("obra_eventos_conciliacao").insert({
-      user_id: user.id,
-      conciliacao_id: concId,
-      acao: "marcar_divergente",
-      detalhes: { observacoes: obs },
-    });
-    toast.success("Marcado como divergente");
-    await fetchAll();
+    try {
+      const { error } = await supabase.from("obra_conciliacoes_bancarias").update({
+        status_conciliacao: "divergente",
+        observacoes: obs,
+      }).eq("id", concId);
+      if (error) throw error;
+      await supabase.from("obra_eventos_conciliacao").insert({
+        user_id: user.id,
+        conciliacao_id: concId,
+        acao: "marcar_divergente",
+        detalhes: { observacoes: obs },
+      });
+      toast.success("Marcado como divergente");
+      await fetchAll();
+    } catch (err: any) {
+      toast.error("Erro: " + (err?.message ?? "Tente novamente"));
+      console.error("[useConciliacao.marcarDivergente]", err);
+    }
   }, [user, fetchAll]);
 
   /* Create transaction from movimentacao */
@@ -372,28 +408,33 @@ export function useConciliacao() {
     if (!user) return;
     const mov = movimentacoes.find(m => m.id === movId);
     if (!mov) return;
-    const { data: tx } = await supabase.from("obra_transacoes_fluxo").insert({
-      user_id: user.id,
-      tipo: mov.tipo_movimentacao === "entrada" ? "Entrada" : "Saída",
-      descricao: mov.descricao,
-      categoria: categoria || mov.categoria_sugerida,
-      valor: mov.valor,
-      data: mov.data_movimentacao,
-      forma_pagamento: "",
-      conta_id: contaId,
-      observacoes: `Criado via conciliação bancária`,
-      recorrencia: "Única",
-      referencia: `CONC-${movId.slice(0, 8)}`,
-      origem_tipo: "conciliacao",
-      origem_id: movId,
-      conciliado: true,
-      conciliado_em: new Date().toISOString(),
-    }).select("id").single();
-
-    if (tx) {
-      await conciliarManual(movId, tx.id, "Transação criada via conciliação");
+    try {
+      const { data: tx, error: txErr } = await supabase.from("obra_transacoes_fluxo").insert({
+        user_id: user.id,
+        tipo: mov.tipo_movimentacao === "entrada" ? "Entrada" : "Saída",
+        descricao: mov.descricao,
+        categoria: categoria || mov.categoria_sugerida,
+        valor: mov.valor,
+        data: mov.data_movimentacao,
+        forma_pagamento: "",
+        conta_id: contaId,
+        observacoes: `Criado via conciliação bancária`,
+        recorrencia: "Única",
+        referencia: `CONC-${movId.slice(0, 8)}`,
+        origem_tipo: "conciliacao",
+        origem_id: movId,
+        conciliado: true,
+        conciliado_em: new Date().toISOString(),
+      }).select("id").single();
+      if (txErr) throw txErr;
+      if (tx) {
+        await conciliarManual(movId, tx.id, "Transação criada via conciliação");
+      }
+      toast.success("Transação criada e conciliada");
+    } catch (err: any) {
+      toast.error("Erro ao criar transação: " + (err?.message ?? "Tente novamente"));
+      console.error("[useConciliacao.criarTransacaoDeMov]", err);
     }
-    toast.success("Transação criada e conciliada");
   }, [user, movimentacoes, conciliarManual]);
 
   return {
@@ -403,6 +444,7 @@ export function useConciliacao() {
     sugestoes,
     stats,
     loading,
+    fetchError,
     fetchAll,
     runMatching,
     conciliarManual,

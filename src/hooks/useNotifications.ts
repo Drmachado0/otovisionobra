@@ -41,21 +41,21 @@ export function useNotifications() {
   useRealtimeSubscription("obra_notificacoes", fetchNotifications);
 
   const markAsRead = async (id: string) => {
-    await supabase
+    const { error } = await supabase
       .from("obra_notificacoes")
       .update({ status: "lida", read_at: new Date().toISOString() } as any)
       .eq("id", id);
-    fetchNotifications();
+    if (!error) fetchNotifications();
   };
 
   const markAllAsRead = async () => {
     if (!user) return;
-    await supabase
+    const { error } = await supabase
       .from("obra_notificacoes")
       .update({ status: "lida", read_at: new Date().toISOString() } as any)
       .eq("user_id", user.id)
       .eq("status", "nao_lida");
-    fetchNotifications();
+    if (!error) fetchNotifications();
   };
 
   return { notifications, unreadCount, markAsRead, markAllAsRead, refresh: fetchNotifications };

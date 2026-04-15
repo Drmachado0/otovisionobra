@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useObraConfig } from "@/hooks/useObraConfig";
 import {
   Settings, Shield, Download, Trash2, Users, Info, AlertTriangle,
   Loader2, Check, Building2, Save,
@@ -13,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/formatters";
+import type { ObraConfig } from "@/types/obra";
 
 interface UserWithRole {
   id: string;
@@ -20,115 +22,32 @@ interface UserWithRole {
   role: string;
 }
 
-interface ObraConfig {
-  id?: string;
-  nome_obra: string;
-  endereco: string;
-  responsavel: string;
-  contato_responsavel: string;
-  area_construida: number;
-  orcamento_total: number;
-  data_inicio: string;
-  data_termino: string;
-}
-
 const ROLES = ["admin", "financeiro", "construtor", "visualizador"];
-
-const defaultObraConfig: ObraConfig = {
-  nome_obra: "",
-  endereco: "",
-  responsavel: "",
-  contato_responsavel: "",
-  area_construida: 0,
-  orcamento_total: 0,
-  data_inicio: "",
-  data_termino: "",
-};
 
 export default function ConfiguracoesPage() {
   const { user } = useAuth();
   const { role } = useUserRole();
+  const { config: obraConfig, loading: loadingObra, saving: savingObra, saveConfig } = useObraConfig();
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [showDangerDialog, setShowDangerDialog] = useState(false);
   const [dangerConfirm, setDangerConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [comissaoRate, setComissaoRate] = useState("8");
 
-  // Obra config state
-  const [obraConfig, setObraConfig] = useState<ObraConfig>(defaultObraConfig);
-  const [obraConfigId, setObraConfigId] = useState<string | null>(null);
-  const [loadingObra, setLoadingObra] = useState(true);
-  const [savingObra, setSavingObra] = useState(false);
+  // Estado local para edição — só persiste ao clicar em Salvar
+  const [editForm, setEditForm] = useState<typeof obraConfig | null>(null);
+  const activeForm = editForm ?? obraConfig;
 
   useEffect(() => {
-    fetchObraConfig();
-    if (role === "admin") {
-      fetchUsers();
-    }
+    if (role === "admin") fetchUsers();
   }, [role]);
 
-  const fetchObraConfig = async () => {
-    setLoadingObra(true);
-    const { data, error } = await supabase
-      .from("obra_config")
-      .select("*")
-      .limit(1)
-      .maybeSingle();
-
-    if (data) {
-      setObraConfigId(data.id);
-      setObraConfig({
-        id: data.id,
-        nome_obra: data.nome_obra || "",
-        endereco: data.endereco || "",
-        responsavel: data.responsavel || "",
-        contato_responsavel: data.contato_responsavel || "",
-        area_construida: Number(data.area_construida) || 0,
-        orcamento_total: Number(data.orcamento_total) || 0,
-        data_inicio: data.data_inicio || "",
-        data_termino: data.data_termino || "",
-      });
+  const handleSaveObra = () => {
+    if (editForm) {
+      saveConfig(editForm);
+      setEditForm(null);
     }
-    setLoadingObra(false);
-  };
-
-  const handleSaveObra = async () => {
-    if (!user) return;
-    setSavingObra(true);
-    try {
-      const payload = {
-        nome_obra: obraConfig.nome_obra,
-        endereco: obraConfig.endereco,
-        responsavel: obraConfig.responsavel,
-        contato_responsavel: obraConfig.contato_responsavel,
-        area_construida: obraConfig.area_construida,
-        orcamento_total: obraConfig.orcamento_total,
-        data_inicio: obraConfig.data_inicio,
-        data_termino: obraConfig.data_termino,
-        user_id: user.id,
-      };
-
-      let error;
-      if (obraConfigId) {
-        ({ error } = await supabase
-          .from("obra_config")
-          .update(payload)
-          .eq("id", obraConfigId));
-      } else {
-        ({ error } = await supabase
-          .from("obra_config")
-          .insert(payload));
-      }
-
-      if (error) throw error;
-      toast.success("Dados da obra salvos com sucesso!");
-      fetchObraConfig();
-    } catch (err: any) {
-      toast.error("Erro ao salvar: " + err.message);
-    }
-    setSavingObra(false);
   };
 
   const fetchUsers = async () => {
@@ -234,8 +153,8 @@ export default function ConfiguracoesPage() {
     setDeleting(false);
   };
 
-  const updateObraField = (field: keyof ObraConfig, value: string | number) => {
-    setObraConfig(prev => ({ ...prev, [field]: value }));
+  const updateObraField = (field: string, value: string | number) => {
+    setEditForm(prev => ({ ...(prev ?? obraConfig), [field]: value }));
   };
 
   return (
@@ -288,7 +207,7 @@ export default function ConfiguracoesPage() {
             <div className="sm:col-span-2">
               <Label className="text-xs text-muted-foreground">Nome da Obra</Label>
               <Input
-                value={obraConfig.nome_obra}
+                value={activeForm.nome_obra}
                 onChange={e => updateObraField("nome_obra", e.target.value)}
                 placeholder="Ex: Clínica Otovision"
                 className="mt-1"
@@ -297,7 +216,7 @@ export default function ConfiguracoesPage() {
             <div className="sm:col-span-2">
               <Label className="text-xs text-muted-foreground">Endereço</Label>
               <Input
-                value={obraConfig.endereco}
+                value={activeForm.endereco}
                 onChange={e => updateObraField("endereco", e.target.value)}
                 placeholder="Rua, número, cidade..."
                 className="mt-1"
@@ -306,7 +225,7 @@ export default function ConfiguracoesPage() {
             <div>
               <Label className="text-xs text-muted-foreground">Responsável</Label>
               <Input
-                value={obraConfig.responsavel}
+                value={activeForm.responsavel}
                 onChange={e => updateObraField("responsavel", e.target.value)}
                 placeholder="Nome do responsável"
                 className="mt-1"
@@ -315,7 +234,7 @@ export default function ConfiguracoesPage() {
             <div>
               <Label className="text-xs text-muted-foreground">Contato do Responsável</Label>
               <Input
-                value={obraConfig.contato_responsavel}
+                value={activeForm.contato_responsavel}
                 onChange={e => updateObraField("contato_responsavel", e.target.value)}
                 placeholder="Telefone ou email"
                 className="mt-1"
@@ -327,7 +246,7 @@ export default function ConfiguracoesPage() {
                 type="number"
                 min="0"
                 step="0.01"
-                value={obraConfig.area_construida || ""}
+                value={activeForm.area_construida || ""}
                 onChange={e => updateObraField("area_construida", parseFloat(e.target.value) || 0)}
                 placeholder="658"
                 className="mt-1"
@@ -342,14 +261,14 @@ export default function ConfiguracoesPage() {
                 type="number"
                 min="0"
                 step="0.01"
-                value={obraConfig.orcamento_total || ""}
+                value={activeForm.orcamento_total || ""}
                 onChange={e => updateObraField("orcamento_total", parseFloat(e.target.value) || 0)}
                 placeholder="1500000"
                 className="mt-1"
               />
-              {obraConfig.orcamento_total > 0 && (
+              {activeForm.orcamento_total > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {formatCurrency(obraConfig.orcamento_total)}
+                  {formatCurrency(activeForm.orcamento_total)}
                 </p>
               )}
             </div>
@@ -357,7 +276,7 @@ export default function ConfiguracoesPage() {
               <Label className="text-xs text-muted-foreground">Data de Início</Label>
               <Input
                 type="date"
-                value={obraConfig.data_inicio}
+                value={activeForm.data_inicio}
                 onChange={e => updateObraField("data_inicio", e.target.value)}
                 className="mt-1"
               />
@@ -366,7 +285,7 @@ export default function ConfiguracoesPage() {
               <Label className="text-xs text-muted-foreground">Data de Término</Label>
               <Input
                 type="date"
-                value={obraConfig.data_termino}
+                value={activeForm.data_termino}
                 onChange={e => updateObraField("data_termino", e.target.value)}
                 className="mt-1"
               />
@@ -388,8 +307,8 @@ export default function ConfiguracoesPage() {
               step="0.5"
               min="0"
               max="100"
-              value={comissaoRate}
-              onChange={e => setComissaoRate(e.target.value)}
+              value={activeForm.percentual_comissao ?? 8}
+              onChange={e => updateObraField("percentual_comissao", parseFloat(e.target.value) || 8)}
               className="mt-1 max-w-[120px]"
             />
             <p className="text-xs text-muted-foreground mt-1">Usado no cálculo automático de comissão</p>
