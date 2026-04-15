@@ -24,6 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function ComprasPage() {
+  const { user } = useAuth();
   const [compras, setCompras] = useState<Compra[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -62,6 +63,7 @@ export default function ComprasPage() {
     setSaving(true);
 
     const { error } = await supabase.from("obra_compras").insert({
+      user_id: user!.id,
       fornecedor: form.fornecedor,
       descricao: form.descricao,
       categoria: form.categoria,
@@ -69,11 +71,11 @@ export default function ComprasPage() {
       data: form.data,
       status_entrega: form.status_entrega,
       forma_pagamento: form.forma_pagamento,
-    });
+    } as any);
 
     if (!error) {
-      // Also create a transaction
       await supabase.from("obra_transacoes_fluxo").insert({
+        user_id: user!.id,
         tipo: "Saída",
         valor: Number(form.valor_total),
         data: form.data,
@@ -85,7 +87,7 @@ export default function ComprasPage() {
         conta_id: "",
         observacoes: `Fornecedor: ${form.fornecedor}`,
         origem_tipo: "compra",
-      });
+      } as any);
     }
 
     setSaving(false);
