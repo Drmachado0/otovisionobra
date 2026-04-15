@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, ArrowLeftRight, ShoppingCart, FileText, Percent,
   Menu, X, Building2, History, Calendar, TrendingUp, Lightbulb,
-  BarChart3, FolderSync, Landmark, ChevronRight, Wallet,
+  BarChart3, FolderSync, Landmark, ChevronRight, Wallet, Settings,
 } from "lucide-react";
 import UserMenu from "@/components/UserMenu";
 import NotificationBell from "@/components/NotificationBell";
@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
   { path: "/comissao", label: "Comissão", icon: Percent, allowedRoles: ["admin", "construtor"] },
   { path: "/relatorios", label: "Relatórios", icon: BarChart3, allowedRoles: ["admin", "financeiro"] },
   { path: "/auditoria", label: "Auditoria", icon: History, allowedRoles: ["admin"] },
+  { path: "/configuracoes", label: "Configurações", icon: Settings, allowedRoles: ["admin"] },
 ];
 
 function getPageLabel(pathname: string): string {
