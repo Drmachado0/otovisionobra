@@ -121,6 +121,7 @@ export default function ComprasPage() {
       numero_parcelas: numParcelas,
       parcelas: parcelas as any,
       observacoes: obs,
+      conta_id: form.conta_id,
     } as any);
 
     // For única and recorrente, create transaction immediately
@@ -135,7 +136,7 @@ export default function ComprasPage() {
         forma_pagamento: form.forma_pagamento,
         recorrencia: isRecorrente ? form.periodicidade : "Única",
         referencia: "",
-        conta_id: "",
+        conta_id: form.conta_id,
         observacoes: `Fornecedor: ${form.fornecedor}`,
         origem_tipo: "compra",
       } as any);
@@ -386,6 +387,14 @@ export default function ComprasPage() {
                 <Input value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} className="mt-1" />
               </div>
             )}
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Conta</Label>
+              <select value={form.conta_id} onChange={e => setForm(f => ({ ...f, conta_id: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1">
+                <option value="">Sem conta vinculada</option>
+                {contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+              </select>
+            </div>
 
             <Button type="submit" disabled={saving} className="w-full">
               {saving ? "Salvando..." : form.tipo_compra === "Parcelada" ? `Registrar ${form.numero_parcelas}x` : form.tipo_compra === "Recorrente" ? "Registrar Assinatura" : "Registrar Compra"}
