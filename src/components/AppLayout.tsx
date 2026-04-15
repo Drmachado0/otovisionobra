@@ -22,6 +22,7 @@ const navItems: NavItem[] = [
   { path: "/fluxo", label: "Fluxo de Caixa", icon: ArrowLeftRight, allowedRoles: ["admin", "financeiro"] },
   { path: "/contas", label: "Contas", icon: Wallet, allowedRoles: ["admin", "financeiro"] },
   { path: "/compras", label: "Compras", icon: ShoppingCart, allowedRoles: ["admin", "financeiro"] },
+  { path: "/notas-fiscais", label: "Notas Fiscais", icon: FileText, allowedRoles: ["admin", "financeiro"] },
   { path: "/previsao", label: "Previsão", icon: TrendingUp, allowedRoles: ["admin", "financeiro"] },
   { path: "/insights", label: "Insights", icon: Lightbulb },
   { path: "/leitor-ia", label: "Leitor IA", icon: FileText, allowedRoles: ["admin", "financeiro"] },

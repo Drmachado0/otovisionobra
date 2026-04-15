@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { Check, RefreshCw, CreditCard, AlertCircle } from "lucide-react";
+import { Check, RefreshCw, CreditCard, AlertCircle, DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import PagamentoDialog from "@/components/PagamentoDialog";
 
 interface Parcela {
   numero: number;
@@ -49,6 +51,7 @@ export function parseParcelas(raw: any): Parcela[] {
 }
 
 export default function CompraDetailDrawer({ compra, open, onClose, onRefresh, userId }: Props) {
+  const [showPagamento, setShowPagamento] = useState(false);
   if (!compra) return null;
 
   const parcelas = parseParcelas(compra.parcelas);
@@ -190,7 +193,29 @@ export default function CompraDetailDrawer({ compra, open, onClose, onRefresh, u
               <p className="text-sm text-muted-foreground">{compra.observacoes}</p>
             </div>
           )}
+
+          {/* Payment button for single purchases */}
+          {tipo === "Única" && compra.status_entrega !== "Entregue" && (
+            <Button className="w-full" onClick={() => setShowPagamento(true)}>
+              <DollarSign className="w-4 h-4 mr-2" />
+              Registrar Pagamento
+            </Button>
+          )}
         </div>
+
+        {/* Payment dialog */}
+        <PagamentoDialog
+          open={showPagamento}
+          onClose={() => setShowPagamento(false)}
+          onSuccess={() => { setShowPagamento(false); onRefresh(); }}
+          tipo="compra"
+          id={compra.id}
+          fornecedor={compra.fornecedor}
+          valor={compra.valor_total}
+          categoria={compra.categoria}
+          descricao={compra.descricao}
+          userId={userId}
+        />
       </SheetContent>
     </Sheet>
   );
