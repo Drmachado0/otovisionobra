@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { formatCurrency } from "@/lib/formatters";
-import { Percent, CheckCircle, Clock, DollarSign, TrendingUp, Calendar } from "lucide-react";
+import { Percent, CheckCircle, Clock, DollarSign, TrendingUp, Calendar, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import ConfirmDialog from "@/components/ConfirmDialog";
 import { Progress } from "@/components/ui/progress";
 import ComissaoDetailDrawer, { parseObservacoes } from "@/components/ComissaoDetailDrawer";
 
@@ -41,6 +43,26 @@ export default function ComissaoPage() {
   const [selected, setSelected] = useState<ComissaoRow | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "pago" | "pendente">("todos");
+  const [deleteTarget, setDeleteTarget] = useState<ComissaoRow | null>(null);
+
+  const handleQuickDelete = (c: ComissaoRow) => {
+    setDeleteTarget(c);
+  };
+
+  const confirmQuickDelete = async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase
+      .from("obra_comissao_pagamentos")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteTarget.id);
+    setDeleteTarget(null);
+    if (error) {
+      toast.error("Erro ao excluir");
+    } else {
+      toast.success("Comissão excluída");
+      fetchData();
+    }
+  };
 
   const fetchData = useCallback(async () => {
     const [transRes, comRes] = await Promise.all([
@@ -180,11 +202,19 @@ export default function ComissaoPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-right shrink-0 ml-3">
-                    <p className="text-sm font-bold">{formatCurrency(Number(c.valor))}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      de {formatCurrency(valorBase)}
-                    </p>
+                  <div className="flex items-center gap-2 shrink-0 ml-3">
+                    <div className="text-right">
+                      <p className="text-sm font-bold">{formatCurrency(Number(c.valor))}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        de {formatCurrency(valorBase)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleQuickDelete(c); }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               );
@@ -193,7 +223,17 @@ export default function ComissaoPage() {
         )}
       </div>
 
-      <ComissaoDetailDrawer comissao={selected} open={drawerOpen} onOpenChange={setDrawerOpen} />
+      <ComissaoDetailDrawer comissao={selected} open={drawerOpen} onOpenChange={setDrawerOpen} onUpdate={fetchData} />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Excluir Comissão"
+        message={`Deseja excluir o lançamento de ${deleteTarget ? formatCurrency(Number(deleteTarget.valor)) : ""}?`}
+        confirmLabel="Excluir"
+        variant="danger"
+        onConfirm={confirmQuickDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }
