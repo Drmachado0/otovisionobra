@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
-import NotFound from "./pages/NotFound.tsx";
+import NotFound from "@/pages/NotFound";
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const FluxoCaixaPage = lazy(() => import("@/pages/FluxoCaixaPage"));
