@@ -6,7 +6,7 @@ import { useRecurringTransactions } from "@/hooks/useRecurringTransactions";
 import { formatCurrency, formatDate, CATEGORIAS_PADRAO } from "@/lib/formatters";
 import {
   Plus, ArrowUpRight, ArrowDownRight, Search, X,
-  ChevronLeft, ChevronRight, Filter, CreditCard, RefreshCw,
+  ChevronLeft, ChevronRight, Filter, CreditCard, RefreshCw, Paperclip,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import OrigemBadge from "@/components/OrigemBadge";
 import RecorrentesDrawer from "@/components/RecorrentesDrawer";
 import TransacaoDetailDrawer, { type TransacaoFull } from "@/components/TransacaoDetailDrawer";
+import { AttachmentUploadArea, uploadPendingAttachments, useAttachmentCounts } from "@/components/TransactionAttachments";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const CATEGORIAS = CATEGORIAS_PADRAO;
 const FORMAS_PAGAMENTO = ["PIX", "Cartão", "Boleto", "Dinheiro", "Transferência"];
