@@ -102,10 +102,11 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     fetchObraConfig();
+    fetchNotifPrefs();
     if (role === "admin") {
       fetchUsers();
     }
-  }, [role]);
+  }, [role, fetchNotifPrefs]);
 
   const fetchObraConfig = async () => {
     setLoadingObra(true);
