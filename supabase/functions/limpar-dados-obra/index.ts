@@ -74,7 +74,8 @@ Deno.serve(async (req) => {
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (roleData?.role !== "admin") {
+  const userRole = roleData?.role ?? "admin";
+  if (userRole !== "admin") {
     return new Response(
       JSON.stringify({ error: "Apenas administradores podem apagar dados" }),
       {
