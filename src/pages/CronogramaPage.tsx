@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   TrendingUp,
   ChevronRight,
-  X,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Etapa {
   id: string;
@@ -50,6 +51,13 @@ const emptyForm = {
   status: "Não Iniciada", percentual_conclusao: 0, custo_previsto: 0, descricao: "", observacoes: "",
 };
 
+interface FormErrors {
+  nome?: string;
+  percentual_conclusao?: string;
+  custo_previsto?: string;
+  datas?: string;
+}
+
 export default function CronogramaPage() {
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,6 +65,8 @@ export default function CronogramaPage() {
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [deleteTarget, setDeleteTarget] = useState<Etapa | null>(null);
 
   const fetchData = useCallback(async () => {
     const { data } = await supabase
@@ -84,7 +94,7 @@ export default function CronogramaPage() {
     return { total, concluidas, atrasadas, acima, custoTotal, custoReal, progressoGeral };
   }, [etapas]);
 
-  const openNew = () => { setForm(emptyForm); setEditId(null); setDialogOpen(true); };
+  const openNew = () => { setForm(emptyForm); setEditId(null); setErrors({}); setDialogOpen(true); };
   const openEdit = (e: Etapa) => {
     setForm({
       nome: e.nome, categoria: e.categoria, responsavel: e.responsavel,
@@ -93,16 +103,42 @@ export default function CronogramaPage() {
       custo_previsto: e.custo_previsto, descricao: e.descricao, observacoes: e.observacoes,
     });
     setEditId(e.id);
+    setErrors({});
     setDialogOpen(true);
   };
 
+  const validate = (): boolean => {
+    const errs: FormErrors = {};
+    if (!form.nome.trim()) errs.nome = "Nome é obrigatório";
+    const pct = Number(form.percentual_conclusao);
+    if (pct < 0 || pct > 100) errs.percentual_conclusao = "Deve ser entre 0 e 100";
+    if (Number(form.custo_previsto) < 0) errs.custo_previsto = "Custo não pode ser negativo";
+    if (form.inicio_previsto && form.fim_previsto && form.fim_previsto < form.inicio_previsto) {
+      errs.datas = "Data fim deve ser após data início";
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSave = async () => {
-    if (!form.nome) { toast.error("Nome é obrigatório"); return; }
+    if (!validate()) return;
     setSaving(true);
+
+    // Auto-status based on progress
+    let autoStatus = form.status;
+    const pct = Number(form.percentual_conclusao);
+    if (pct >= 100) {
+      autoStatus = "Concluída";
+    } else if (pct > 0 && autoStatus === "Não Iniciada") {
+      autoStatus = "Em Andamento";
+    } else if (pct === 0 && autoStatus === "Concluída") {
+      autoStatus = "Não Iniciada";
+    }
+
     const payload = {
       nome: form.nome, categoria: form.categoria, responsavel: form.responsavel,
       inicio_previsto: form.inicio_previsto, fim_previsto: form.fim_previsto,
-      status: form.status, percentual_conclusao: Number(form.percentual_conclusao),
+      status: autoStatus, percentual_conclusao: pct,
       custo_previsto: Number(form.custo_previsto), descricao: form.descricao, observacoes: form.observacoes,
     };
 
@@ -117,6 +153,14 @@ export default function CronogramaPage() {
     setSaving(false);
     setDialogOpen(false);
     fetchData();
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase.from("obra_cronograma").delete().eq("id", deleteTarget.id);
+    setDeleteTarget(null);
+    if (error) toast.error("Erro ao excluir");
+    else { toast.success("Etapa excluída"); fetchData(); }
   };
 
   // Timeline calculations
@@ -300,7 +344,11 @@ export default function CronogramaPage() {
             <DialogTitle>{editId ? "Editar Etapa" : "Nova Etapa"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div><Label>Nome *</Label><Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} /></div>
+            <div>
+              <Label>Nome *</Label>
+              <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} />
+              {errors.nome && <p className="text-xs text-destructive mt-1">{errors.nome}</p>}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>Categoria</Label><Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} /></div>
               <div><Label>Responsável</Label><Input value={form.responsavel} onChange={e => setForm(f => ({ ...f, responsavel: e.target.value }))} /></div>
@@ -309,6 +357,7 @@ export default function CronogramaPage() {
               <div><Label>Início Previsto</Label><Input type="date" value={form.inicio_previsto} onChange={e => setForm(f => ({ ...f, inicio_previsto: e.target.value }))} /></div>
               <div><Label>Fim Previsto</Label><Input type="date" value={form.fim_previsto} onChange={e => setForm(f => ({ ...f, fim_previsto: e.target.value }))} /></div>
             </div>
+            {errors.datas && <p className="text-xs text-destructive">{errors.datas}</p>}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Status</Label>
@@ -321,16 +370,50 @@ export default function CronogramaPage() {
                     <SelectItem value="Atrasada">Atrasada</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-[10px] text-muted-foreground mt-1">Auto-ajustado pelo progresso</p>
               </div>
-              <div><Label>Progresso (%)</Label><Input type="number" min={0} max={100} value={form.percentual_conclusao} onChange={e => setForm(f => ({ ...f, percentual_conclusao: Number(e.target.value) }))} /></div>
+              <div>
+                <Label>Progresso (%)</Label>
+                <Input type="number" min={0} max={100} value={form.percentual_conclusao} onChange={e => setForm(f => ({ ...f, percentual_conclusao: Number(e.target.value) }))} />
+                {errors.percentual_conclusao && <p className="text-xs text-destructive mt-1">{errors.percentual_conclusao}</p>}
+              </div>
             </div>
-            <div><Label>Custo Previsto (R$)</Label><Input type="number" value={form.custo_previsto} onChange={e => setForm(f => ({ ...f, custo_previsto: Number(e.target.value) }))} /></div>
+            <div>
+              <Label>Custo Previsto (R$)</Label>
+              <Input type="number" value={form.custo_previsto} onChange={e => setForm(f => ({ ...f, custo_previsto: Number(e.target.value) }))} />
+              {errors.custo_previsto && <p className="text-xs text-destructive mt-1">{errors.custo_previsto}</p>}
+            </div>
             <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} /></div>
             <div><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} /></div>
-            <Button onClick={handleSave} disabled={saving} className="w-full">{saving ? "Salvando..." : "Salvar"}</Button>
+            <div className="flex gap-3">
+              <Button onClick={handleSave} disabled={saving} className="flex-1">{saving ? "Salvando..." : "Salvar"}</Button>
+              {editId && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => {
+                    const target = etapas.find(e => e.id === editId);
+                    if (target) { setDialogOpen(false); setDeleteTarget(target); }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Excluir Etapa"
+        message={`Deseja excluir a etapa "${deleteTarget?.nome}"? Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        variant="danger"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

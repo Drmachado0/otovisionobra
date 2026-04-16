@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
-import { History, Plus, Edit, Trash2, Search, Filter } from "lucide-react";
+import { formatCurrency } from "@/lib/formatters";
+import { History, Plus, Edit, Trash2, Search } from "lucide-react";
 import { SkeletonTable } from "@/components/SkeletonCard";
 
 interface AuditLog {
@@ -34,6 +35,67 @@ const TABELA_LABELS: Record<string, string> = {
   obra_fornecedores: "Fornecedor",
   obra_comissao_pagamentos: "Comissão",
 };
+
+const CAMPOS_LEGÍVEIS: Record<string, string> = {
+  descricao: "Descrição",
+  valor: "Valor",
+  valor_total: "Valor Total",
+  valor_bruto: "Valor Bruto",
+  valor_liquido: "Valor Líquido",
+  fornecedor: "Fornecedor",
+  categoria: "Categoria",
+  status: "Status",
+  tipo: "Tipo",
+  data: "Data",
+  data_emissao: "Data Emissão",
+  forma_pagamento: "Pagamento",
+  pago: "Pago",
+  nome: "Nome",
+  observacoes: "Observações",
+};
+
+function formatFieldValue(key: string, val: any): string {
+  if (val === null || val === undefined) return "—";
+  if (key.includes("valor") || key === "custo_previsto" || key === "custo_real") {
+    const n = Number(val);
+    if (!isNaN(n)) return formatCurrency(n);
+  }
+  if (typeof val === "boolean") return val ? "Sim" : "Não";
+  if (typeof val === "object") return JSON.stringify(val);
+  return String(val);
+}
+
+function buildChangeSummary(anterior: any, novo: any): string[] {
+  const changes: string[] = [];
+  if (!anterior && novo) {
+    // Creation — show key fields
+    for (const key of Object.keys(CAMPOS_LEGÍVEIS)) {
+      if (novo[key] !== undefined && novo[key] !== "" && novo[key] !== null) {
+        changes.push(`${CAMPOS_LEGÍVEIS[key]}: ${formatFieldValue(key, novo[key])}`);
+      }
+    }
+    return changes.slice(0, 4);
+  }
+  if (anterior && novo) {
+    // Edition — show diffs
+    for (const key of Object.keys(CAMPOS_LEGÍVEIS)) {
+      if (anterior[key] !== undefined && novo[key] !== undefined && String(anterior[key]) !== String(novo[key])) {
+        changes.push(`${CAMPOS_LEGÍVEIS[key]}: ${formatFieldValue(key, anterior[key])} → ${formatFieldValue(key, novo[key])}`);
+      }
+    }
+    return changes.slice(0, 5);
+  }
+  if (anterior && !novo) {
+    // Deletion — show key fields
+    for (const key of Object.keys(CAMPOS_LEGÍVEIS)) {
+      if (anterior[key] !== undefined && anterior[key] !== "" && anterior[key] !== null) {
+        changes.push(`${CAMPOS_LEGÍVEIS[key]}: ${formatFieldValue(key, anterior[key])}`);
+      }
+    }
+    return changes.slice(0, 4);
+  }
+  return [];
+}
 
 export default function AuditoriaPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -114,51 +176,64 @@ export default function AuditoriaPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((log) => (
-            <button
-              key={log.id}
-              onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
-              className="w-full text-left glass-card p-4 hover:border-primary/20 transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${ACAO_COLOR[log.acao] || "bg-muted"}`}>
-                  {ACAO_ICON[log.acao] || <Edit className="w-3.5 h-3.5 text-muted-foreground" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium capitalize">{log.acao}</span>
-                    <span className="px-2 py-0.5 rounded-md bg-secondary text-[10px] font-medium">
-                      {TABELA_LABELS[log.tabela] || log.tabela}
-                    </span>
+          {filtered.map((log) => {
+            const summary = buildChangeSummary(log.dados_anteriores, log.dados_novos);
+            return (
+              <button
+                key={log.id}
+                onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+                className="w-full text-left glass-card p-4 hover:border-primary/20 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${ACAO_COLOR[log.acao] || "bg-muted"}`}>
+                    {ACAO_ICON[log.acao] || <Edit className="w-3.5 h-3.5 text-muted-foreground" />}
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {log.user_email || "Sistema"} • {formatDateTime(log.created_at)}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium capitalize">{log.acao}</span>
+                      <span className="px-2 py-0.5 rounded-md bg-secondary text-[10px] font-medium">
+                        {TABELA_LABELS[log.tabela] || log.tabela}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {log.user_email || "Sistema"} • {formatDateTime(log.created_at)}
+                    </p>
+                    {/* Inline summary */}
+                    {summary.length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {summary.map((s, i) => (
+                          <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-secondary/70 text-muted-foreground">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {expandedId === log.id && (
-                <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
-                  {log.dados_anteriores && (
-                    <div>
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Dados Anteriores</p>
-                      <pre className="text-xs bg-secondary/50 p-2 rounded-md overflow-x-auto max-h-32 text-muted-foreground">
-                        {JSON.stringify(log.dados_anteriores, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {log.dados_novos && (
-                    <div>
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Dados Novos</p>
-                      <pre className="text-xs bg-secondary/50 p-2 rounded-md overflow-x-auto max-h-32 text-muted-foreground">
-                        {JSON.stringify(log.dados_novos, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              )}
-            </button>
-          ))}
+                {expandedId === log.id && (
+                  <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+                    {log.dados_anteriores && (
+                      <div>
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Dados Anteriores</p>
+                        <pre className="text-xs bg-secondary/50 p-2 rounded-md overflow-x-auto max-h-32 text-muted-foreground">
+                          {JSON.stringify(log.dados_anteriores, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                    {log.dados_novos && (
+                      <div>
+                        <p className="text-[10px] font-medium text-muted-foreground uppercase mb-1">Dados Novos</p>
+                        <pre className="text-xs bg-secondary/50 p-2 rounded-md overflow-x-auto max-h-32 text-muted-foreground">
+                          {JSON.stringify(log.dados_novos, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

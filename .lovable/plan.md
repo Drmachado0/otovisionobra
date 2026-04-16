@@ -1,33 +1,19 @@
 
 
-## Plan: Dados da Obra nas Configurações (com Custo/m² em tempo real)
+## Plan: Fix Negative Value Validation Feedback (MEL-002)
 
-### Problema
-A `obra_config` já tem os campos `nome_obra`, `endereco`, `responsavel`, `contato_responsavel`, `area_construida`, `orcamento_total`, `data_inicio`, `data_termino`, mas a página de Configurações não permite editá-los. O valor de `area_construida` (atualmente 658 m²) alimenta o KPI "Custo/m²" no Dashboard, mas não há interface para atualizá-lo.
+### Root Cause
+The `<Input>` has `min="0.01"` which triggers native browser validation for negative values. This silently blocks form submission **before** the custom `handleSubmit` runs — so `setValorError` never executes and no visual feedback appears.
 
-### O que será feito
+### Fix
+In `src/pages/FluxoCaixaPage.tsx` line 311:
+- Remove the `min="0.01"` attribute from the number input
+- The custom JS validation (`numVal <= 0`) already handles zero and negative values correctly with proper visual feedback
 
-Adicionar uma seção "Dados da Obra" na `ConfiguracoesPage` com formulário editável para todos os campos de `obra_config`:
+### Files
+| File | Change |
+|------|--------|
+| `src/pages/FluxoCaixaPage.tsx` | Remove `min="0.01"` from the Valor input (line 311) |
 
-- **Nome da obra** (text)
-- **Endereço** (text)
-- **Responsável** + Contato (text)
-- **Área construída (m²)** (number) -- atualiza o Custo/m² do dashboard em tempo real via realtime subscription já existente
-- **Orçamento total** (number/currency)
-- **Data início** / **Data término** (date)
-- **Categorias** e **Formas de pagamento** (readonly ou editável)
-
-O formulário faz `upsert` na tabela `obra_config` ao salvar. Como o Dashboard já tem `useRealtimeSubscription("obra_config", fetchData)`, qualquer alteração nos dados reflete automaticamente no KPI Custo/m².
-
-### Arquivos
-
-| Acao | Arquivo |
-|------|---------|
-| Editar | `src/pages/ConfiguracoesPage.tsx` -- adicionar seção "Dados da Obra" com fetch + form + save |
-
-### Detalhes
-- Fetch `obra_config` no `useEffect`, popular state do formulário
-- Botão "Salvar" faz `upsert` com `onConflict: 'user_id'` ou `update` pelo `id`
-- Seção posicionada logo após "Informações do Sistema"
-- Sem migração necessária -- todos os campos já existem
+One-line change. No other behavior affected.
 

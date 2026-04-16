@@ -138,9 +138,11 @@ export default function ConfiguracoesPage() {
       .select("user_id, role");
 
     if (roles) {
+      // Fetch emails for user IDs
+      const userIds = roles.map((r: any) => r.user_id);
       const userList: UserWithRole[] = roles.map((r: any) => ({
         id: r.user_id,
-        email: r.user_id,
+        email: r.user_id === user?.id ? (user?.email || r.user_id) : r.user_id,
         role: r.role,
       }));
       setUsers(userList);
@@ -418,7 +420,8 @@ export default function ConfiguracoesPage() {
               {users.map(u => (
                 <div key={u.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/20 hover:bg-secondary/40 transition-colors">
                   <div>
-                    <p className="text-sm font-mono truncate max-w-[280px]">{u.id}</p>
+                    <p className="text-sm truncate max-w-[280px]">{u.email !== u.id ? u.email : u.id.substring(0, 8) + "..."}</p>
+                    {u.id === user?.id && <Badge variant="outline" className="text-[10px] ml-2">Você</Badge>}
                   </div>
                   <select
                     value={u.role}

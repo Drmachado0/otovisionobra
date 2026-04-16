@@ -7,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/AppLayout";
 import LoginPage from "@/pages/LoginPage";
-import NotFound from "./pages/NotFound.tsx";
+import NotFound from "@/pages/NotFound";
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage"));
 const FluxoCaixaPage = lazy(() => import("@/pages/FluxoCaixaPage"));
@@ -23,6 +23,7 @@ const PastaMonitorPage = lazy(() => import("@/pages/PastaMonitorPage"));
 const ConciliacaoPage = lazy(() => import("@/pages/ConciliacaoPage"));
 const ContasBancariasPage = lazy(() => import("@/pages/ContasBancariasPage"));
 const ConfiguracoesPage = lazy(() => import("@/pages/ConfiguracoesPage"));
+const NotasFiscaisPage = lazy(() => import("@/pages/NotasFiscaisPage"));
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,7 @@ function AuthenticatedApp() {
           <Route path="/pasta-sync" element={<PastaMonitorPage />} />
           <Route path="/conciliacao" element={<ConciliacaoPage />} />
           <Route path="/contas" element={<ContasBancariasPage />} />
+          <Route path="/notas-fiscais" element={<NotasFiscaisPage />} />
           <Route path="/configuracoes" element={<ConfiguracoesPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

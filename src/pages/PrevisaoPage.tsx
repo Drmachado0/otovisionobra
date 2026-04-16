@@ -182,7 +182,7 @@ export default function PrevisaoPage() {
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-medium">{c.nome}</span>
                     <span className={`text-xs font-semibold ${c.diff > 0 ? "text-destructive" : c.diff < 0 ? "text-success" : ""}`}>
-                      {c.diff > 0 ? "+" : ""}{c.diff.toFixed(1)}%
+                      {c.real === 0 && c.previsto > 0 ? "Sem execução" : `${c.diff > 0 ? "+" : ""}${c.diff.toFixed(1)}%`}
                     </span>
                   </div>
                   <div className="flex gap-1 h-4">
@@ -218,7 +218,7 @@ export default function PrevisaoPage() {
               const pct = analysis.totalGasto > 0 ? (c.gasto / analysis.totalGasto) * 100 : 0;
               return (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground w-24 truncate">{c.nome}</span>
+                  <span className="text-xs text-muted-foreground w-24 truncate" title={c.nome}>{c.nome}</span>
                   <div className="flex-1 h-2 rounded-full bg-secondary/50 overflow-hidden">
                     <div className="h-full rounded-full bg-primary/60" style={{ width: `${pct}%` }} />
                   </div>
