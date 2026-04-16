@@ -472,7 +472,20 @@ export default function RelatoriosPage() {
         </TabsContent>
 
         <TabsContent value="compras" className="space-y-3 mt-4">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+              const totalCompras = filteredCompras.reduce((s, c) => s + Number(c.valor_total), 0);
+              const entregues = filteredCompras.filter(c => c.status_entrega === "Entregue").length;
+              const pendentes = filteredCompras.length - entregues;
+              exportPDF("Compras",
+                [["Total", formatCurrency(totalCompras)], ["Entregues", String(entregues)], ["Pendentes", String(pendentes)]],
+                [{ key: "data", label: "Data" }, { key: "fornecedor", label: "Fornecedor" }, { key: "descricao", label: "Descrição" }, { key: "categoria", label: "Categoria" }, { key: "valor_total", label: "Valor", align: "right" }, { key: "status_entrega", label: "Status" }],
+                filteredCompras,
+                { data: (v: string) => formatDate(v), valor_total: (v: number) => formatCurrency(Number(v)) },
+              );
+            }}>
+              <FileText className="w-4 h-4" /> PDF
+            </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={() =>
               exportCSV(filteredCompras, "relatorio-compras", [
                 { key: "data", label: "Data" }, { key: "fornecedor", label: "Fornecedor" },
