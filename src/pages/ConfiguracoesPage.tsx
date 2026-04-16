@@ -442,6 +442,39 @@ export default function ConfiguracoesPage() {
         </div>
       </section>
 
+      {/* Notificações */}
+      <section className="glass-card p-6 space-y-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Bell className="w-5 h-5 text-primary" /> Notificações
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Ative ou desative cada tipo de notificação automática.
+        </p>
+        {loadingNotifPrefs ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {NOTIF_TYPES.map((t) => (
+              <div
+                key={t.tipo}
+                className="flex items-center justify-between p-3 rounded-lg bg-secondary/20"
+              >
+                <div>
+                  <p className="text-sm font-medium">{t.label}</p>
+                  <p className="text-xs text-muted-foreground">{t.desc}</p>
+                </div>
+                <Switch
+                  checked={notifPrefs[t.tipo] ?? true}
+                  onCheckedChange={(checked) => toggleNotifPref(t.tipo, checked)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Gerenciamento de Usuários */}
       {role === "admin" && (
         <section className="glass-card p-6 space-y-4">
