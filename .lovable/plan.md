@@ -1,45 +1,29 @@
 
+## Plan: Correções do Relatório de Testes — Fluxo de Caixa
 
-## Plan: Unificar Categorias em Todo o Sistema
+### Problemas identificados
 
-### Problema
-As categorias estão hardcoded em 3 lugares diferentes com listas inconsistentes, e nenhuma usa as categorias reais configuradas em `obra_config.categorias`. O banco já tem transações com categorias como "Madeiras", "Estrutura", "Equipamentos Médicos" que nem aparecem nos filtros/formulários.
-
-### Comparação atual
-
-```text
-obra_config (DB)          FluxoCaixa/Drawer       ComprasPage
-─────────────────         ─────────────────       ─────────────
-Elétrica                  Material                Material
-Hidráulica                Mão de Obra             Mão de Obra
-Acabamento                Equipamento             Equipamento
-Estrutura                 Serviço                 Serviço
-Mobiliário                Administrativo          Assinatura
-Equipamentos Médicos      Transporte              Outro
-TI                        Alimentação
-Materiais de Construção   Aporte
-Mão de Obra               Outro
-Outros
-Madeiras
-Tijolos
-```
-
-### Solução
-Criar uma lista unificada que combina `obra_config.categorias` + categorias específicas do fluxo (Aporte, Serviço, etc.) e usá-la em todos os módulos. Onde possível, buscar do `obra_config` em tempo real.
-
-### Lista unificada proposta
-Acabamento, Administrativo, Alimentação, Aporte, Elétrica, Equipamento, Equipamentos Médicos, Estrutura, Hidráulica, Madeiras, Mão de Obra, Materiais de Construção, Mobiliário, Serviço, TI, Tijolos, Transporte, Outro
+1. **BUG-001**: Painel de detalhes mostra dados antigos após edição. Causa: `selectedTransacao` em `FluxoCaixaPage` não é atualizado quando `fetchData` retorna novos dados.
+2. **MEL-001/002**: Sem feedback visual ao submeter valor zero ou negativo. O `toast.error` já existe no código (linha 88), mas não dispara porque o `<Input type="number">` com valor vazio retorna `""` que falha no `Number()` silenciosamente.
+3. **MEL-004**: Categoria "Material" aparece em dados antigos mas não existe na lista unificada — já corrigido na última iteração com `CATEGORIAS_PADRAO`.
 
 ### Alterações
 
-| Arquivo | O que muda |
+#### 1. `src/pages/FluxoCaixaPage.tsx`
+- Após `fetchData`, atualizar `selectedTransacao` com os dados frescos do array (match por ID)
+- Adicionar estado de erro no formulário para destacar campo valor em vermelho quando inválido
+
+#### 2. `src/components/TransacaoDetailDrawer.tsx`
+- Após `handleSave` com sucesso, atualizar a prop `transacao` via callback que passa os dados editados de volta ao pai
+- Alternativa mais simples: no `FluxoCaixaPage`, usar `useEffect` para sincronizar `selectedTransacao` com `transacoes`
+
+### Arquivos
+
+| Arquivo | Alteração |
 |---------|-----------|
-| `src/lib/formatters.ts` | Exportar `CATEGORIAS_PADRAO` como lista unificada |
-| `src/pages/FluxoCaixaPage.tsx` | Importar e usar `CATEGORIAS_PADRAO` |
-| `src/components/TransacaoDetailDrawer.tsx` | Importar e usar `CATEGORIAS_PADRAO` |
-| `src/pages/ComprasPage.tsx` | Substituir options hardcoded por `CATEGORIAS_PADRAO` |
-| `src/pages/NotasFiscaisPage.tsx` | Usar `CATEGORIAS_PADRAO` nos formulários |
+| `src/pages/FluxoCaixaPage.tsx` | Sync selectedTransacao com transacoes; adicionar validação visual no form |
+| `src/components/TransacaoDetailDrawer.tsx` | Nenhuma mudança necessária |
 
 ### Detalhes técnicos
-- Centralizar a constante em `formatters.ts` para importação única
-- Manter "Aporte" apenas visível no Fluxo de Caixa (é tipo Entrada, não faz sentido em
+- Adicionar `useEffect` que, quando `transacoes` muda e `selectedTransacao` existe, atualiza `selectedTransacao` com `transacoes.find(t => t.id === selectedTransacao.id)`
+- No formulário, mostrar borda vermelha e mensagem abaixo do campo valor quando inválido
