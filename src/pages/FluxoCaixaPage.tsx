@@ -35,6 +35,7 @@ export default function FluxoCaixaPage() {
   const [search, setSearch] = useState("");
   const [filterTipo, setFilterTipo] = useState<string>("todos");
   const [filterCategoria, setFilterCategoria] = useState<string>("todos");
+  const [filterConta, setFilterConta] = useState<string>("todas");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [saving, setSaving] = useState(false);
