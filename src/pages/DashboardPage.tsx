@@ -7,12 +7,18 @@ import {
   DollarSign, TrendingDown, Wallet, Activity, AlertTriangle,
   ArrowUpRight, ArrowDownRight, Ruler, Flame, Target,
   ShieldAlert, ArrowRight, CreditCard, ShoppingCart,
-  Landmark, Receipt, Calendar,
+  Landmark, Receipt, Calendar, BarChart3,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import OrigemBadge from "@/components/OrigemBadge";
 import TransacaoDetailDrawer, { type TransacaoFull } from "@/components/TransacaoDetailDrawer";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  BarChart, Bar, LineChart, Line, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
+  ResponsiveContainer, ComposedChart, ReferenceLine, Legend,
+} from "recharts";
 
 interface TransacaoRow {
   id: string;
@@ -62,12 +68,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [selectedTransacao, setSelectedTransacao] = useState<TransacaoFull | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [allTransForCharts, setAllTransForCharts] = useState<{ tipo: string; valor: number; data: string }[]>([]);
+  const [chartView, setChartView] = useState<string>("mensal");
 
   const fetchData = useCallback(async () => {
     const [configRes, allTransRes, recentTransRes, etapasRes, comprasRes, comissoesRes, contasRes] = await Promise.all([
       supabase.from("obra_config").select("orcamento_total, area_construida, data_inicio, data_termino, nome_obra").limit(1).maybeSingle(),
       // All transactions for accurate totals (no limit)
-      supabase.from("obra_transacoes_fluxo").select("tipo, valor, categoria").is("deleted_at", null),
+      supabase.from("obra_transacoes_fluxo").select("tipo, valor, categoria, data").is("deleted_at", null),
       // Recent 5 for display
       supabase.from("obra_transacoes_fluxo").select("id, tipo, valor, categoria, data, descricao, forma_pagamento, observacoes, origem_tipo, conciliado, recorrencia, conta_id, referencia, created_at").is("deleted_at", null).order("data", { ascending: false }).limit(5),
       supabase.from("obra_cronograma").select("nome, custo_previsto, custo_real, status, percentual_conclusao, fim_previsto"),
@@ -79,10 +87,11 @@ export default function DashboardPage() {
     if (configRes.data) setConfig(configRes.data as ConfigRow);
 
     if (allTransRes.data) {
-      const rows = allTransRes.data as { tipo: string; valor: number; categoria: string }[];
+      const rows = allTransRes.data as { tipo: string; valor: number; categoria: string; data: string }[];
       const saidas = rows.filter(t => t.tipo === "Saída");
       setTotalGasto(saidas.reduce((s, t) => s + Number(t.valor), 0));
       setTotalEntradas(rows.filter(t => t.tipo === "Entrada").reduce((s, t) => s + Number(t.valor), 0));
+      setAllTransForCharts(rows.map(r => ({ tipo: r.tipo, valor: Number(r.valor), data: r.data })));
 
       // Top 5 categories by spending
       const catMap: Record<string, number> = {};
@@ -133,6 +142,65 @@ export default function DashboardPage() {
     const risco = projecao > orcamentoTotal * 1.1 ? "alto" : projecao > orcamentoTotal * 1.0 ? "medio" : "baixo";
     return { custoM2, burnRate, diasRestantes, progressoGeral, etapasAtrasadas, projecao, risco };
   }, [totalGasto, config, saldo, etapas, orcamentoTotal]);
+
+  // Chart data
+  const chartData = useMemo(() => {
+    if (!allTransForCharts.length) return { mensal: [], semanal: [] };
+    const monthMap: Record<string, { entradas: number; saidas: number }> = {};
+    allTransForCharts.forEach(t => {
+      if (!t.data) return;
+      const key = t.data.substring(0, 7);
+      if (!monthMap[key]) monthMap[key] = { entradas: 0, saidas: 0 };
+      if (t.tipo === "Entrada") monthMap[key].entradas += t.valor;
+      else monthMap[key].saidas += t.valor;
+    });
+    const sortedMonths = Object.keys(monthMap).sort();
+    let acum = 0;
+    const mensal = sortedMonths.map(m => {
+      const d = monthMap[m];
+      acum += d.entradas - d.saidas;
+      const [y, mo] = m.split("-");
+      const mNames = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+      return { label: `${mNames[parseInt(mo) - 1]}/${y.slice(2)}`, entradas: d.entradas, saidas: d.saidas, acumulado: acum };
+    });
+    const now = new Date();
+    const weekBuckets: { start: Date; end: Date; entradas: number; saidas: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const end = new Date(now); end.setDate(end.getDate() - i * 7);
+      const start = new Date(end); start.setDate(start.getDate() - 6);
+      weekBuckets.push({ start, end, entradas: 0, saidas: 0 });
+    }
+    allTransForCharts.forEach(t => {
+      if (!t.data) return;
+      const td = new Date(t.data);
+      for (const b of weekBuckets) {
+        if (td >= b.start && td <= b.end) {
+          if (t.tipo === "Entrada") b.entradas += t.valor; else b.saidas += t.valor;
+          break;
+        }
+      }
+    });
+    let wAcum = 0;
+    const semanal = weekBuckets.map(b => {
+      wAcum += b.entradas - b.saidas;
+      const f = (d: Date) => `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`;
+      return { label: f(b.start), entradas: b.entradas, saidas: b.saidas, acumulado: wAcum };
+    });
+    return { mensal, semanal };
+  }, [allTransForCharts]);
+
+  const budgetVsRealized = useMemo(() => {
+    const data = chartView === "mensal" ? chartData.mensal : chartData.semanal;
+    if (!data.length || !orcamentoTotal) return [];
+    const perPeriod = orcamentoTotal / data.length;
+    let bAcum = 0, rAcum = 0;
+    return data.map(d => {
+      bAcum += perPeriod; rAcum += d.saidas;
+      return { label: d.label, previsto: Math.round(bAcum), realizado: Math.round(rAcum) };
+    });
+  }, [chartData, chartView, orcamentoTotal]);
+
+  const activeChartData = chartView === "mensal" ? chartData.mensal : chartData.semanal;
 
   const alerts: string[] = [];
   if (percentual > 90) alerts.push("⚠️ Orçamento acima de 90%!");
@@ -273,6 +341,67 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Evolução Financeira */}
+      {activeChartData.length > 0 && (
+        <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: "920ms" }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" /> 📊 Evolução Financeira
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Acompanhamento {chartView === "mensal" ? "mensal" : "semanal"} de entradas e saídas</p>
+            </div>
+            <ToggleGroup type="single" value={chartView} onValueChange={v => v && setChartView(v)} size="sm">
+              <ToggleGroupItem value="mensal" className="text-xs">Mensal</ToggleGroupItem>
+              <ToggleGroupItem value="semanal" className="text-xs">Semanal</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Barras + Linha acumulada */}
+            <div className="glass-card p-4">
+              <h3 className="text-xs font-medium text-muted-foreground mb-3">Entradas vs Saídas</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={activeChartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                  <ReTooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    formatter={(value: number) => formatCurrency(value)}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="entradas" name="Entradas" fill="#10B981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="saidas" name="Saídas" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                  <Line type="monotone" dataKey="acumulado" name="Saldo Acumulado" stroke="#3B82F6" strokeWidth={2.5} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Orçamento vs Realizado */}
+            <div className="glass-card p-4">
+              <h3 className="text-xs font-medium text-muted-foreground mb-3">Orçamento vs Realizado</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={budgetVsRealized} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                  <ReTooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    formatter={(value: number) => formatCurrency(value)}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Area type="monotone" dataKey="previsto" name="Previsto" stroke="#10B981" fill="#10B981" fillOpacity={0.15} strokeWidth={2} />
+                  <Area type="monotone" dataKey="realizado" name="Realizado" stroke="#F59E0B" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Gastos por Categoria + Etapas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
