@@ -117,6 +117,7 @@ export default function FluxoCaixaPage() {
     setRecFim("");
     setRecMaxOcc("");
     setValorError("");
+    setPendingFiles([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -178,6 +179,11 @@ export default function FluxoCaixaPage() {
     if (error) {
       toast.error("Erro ao salvar: " + error.message);
     } else {
+      // Upload pending files
+      if (inserted && pendingFiles.length > 0) {
+        const uploaded = await uploadPendingAttachments(pendingFiles, inserted.id, user!.id);
+        if (uploaded > 0) toast.success(`${uploaded} anexo(s) enviado(s)`);
+      }
       toast.success(isRecorrente ? "Transação recorrente criada!" : "Transação registrada!");
       setShowForm(false);
       setForm({ tipo: "Saída", valor: "", data: new Date().toISOString().split("T")[0], categoria: "Material", descricao: "", forma_pagamento: "PIX", observacoes: "", conta_id: "" });
