@@ -87,10 +87,11 @@ export default function DashboardPage() {
     if (configRes.data) setConfig(configRes.data as ConfigRow);
 
     if (allTransRes.data) {
-      const rows = allTransRes.data as { tipo: string; valor: number; categoria: string }[];
+      const rows = allTransRes.data as { tipo: string; valor: number; categoria: string; data: string }[];
       const saidas = rows.filter(t => t.tipo === "Saída");
       setTotalGasto(saidas.reduce((s, t) => s + Number(t.valor), 0));
       setTotalEntradas(rows.filter(t => t.tipo === "Entrada").reduce((s, t) => s + Number(t.valor), 0));
+      setAllTransForCharts(rows.map(r => ({ tipo: r.tipo, valor: Number(r.valor), data: r.data })));
 
       // Top 5 categories by spending
       const catMap: Record<string, number> = {};
