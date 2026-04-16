@@ -423,7 +423,17 @@ export default function RelatoriosPage() {
         </TabsList>
 
         <TabsContent value="financeiro" className="space-y-3 mt-4">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() =>
+              exportPDF("Financeiro",
+                [["Orçamento", formatCurrency(orcamento)], ["Saídas", formatCurrency(totalSaidas)], ["Entradas", formatCurrency(totalEntradas)], ["Saldo", formatCurrency(orcamento - totalSaidas)]],
+                [{ key: "data", label: "Data" }, { key: "tipo", label: "Tipo" }, { key: "descricao", label: "Descrição" }, { key: "categoria", label: "Categoria" }, { key: "valor", label: "Valor", align: "right" }, { key: "forma_pagamento", label: "Pagamento" }],
+                filteredTrans,
+                { data: (v: string) => formatDate(v), valor: (v: number) => formatCurrency(Number(v)) },
+              )
+            }>
+              <FileText className="w-4 h-4" /> PDF
+            </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={() =>
               exportCSV(filteredTrans, "relatorio-financeiro", [
                 { key: "data", label: "Data" }, { key: "tipo", label: "Tipo" },
