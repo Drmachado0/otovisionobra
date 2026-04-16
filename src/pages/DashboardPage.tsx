@@ -342,6 +342,67 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Evolução Financeira */}
+      {activeChartData.length > 0 && (
+        <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: "920ms" }}>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" /> 📊 Evolução Financeira
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Acompanhamento {chartView === "mensal" ? "mensal" : "semanal"} de entradas e saídas</p>
+            </div>
+            <ToggleGroup type="single" value={chartView} onValueChange={v => v && setChartView(v)} size="sm">
+              <ToggleGroupItem value="mensal" className="text-xs">Mensal</ToggleGroupItem>
+              <ToggleGroupItem value="semanal" className="text-xs">Semanal</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Barras + Linha acumulada */}
+            <div className="glass-card p-4">
+              <h3 className="text-xs font-medium text-muted-foreground mb-3">Entradas vs Saídas</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={activeChartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                  <ReTooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    formatter={(value: number) => formatCurrency(value)}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="entradas" name="Entradas" fill="#10B981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="saidas" name="Saídas" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                  <Line type="monotone" dataKey="acumulado" name="Saldo Acumulado" stroke="#3B82F6" strokeWidth={2.5} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Orçamento vs Realizado */}
+            <div className="glass-card p-4">
+              <h3 className="text-xs font-medium text-muted-foreground mb-3">Orçamento vs Realizado</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={budgetVsRealized} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                  <ReTooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    formatter={(value: number) => formatCurrency(value)}
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Area type="monotone" dataKey="previsto" name="Previsto" stroke="#10B981" fill="#10B981" fillOpacity={0.15} strokeWidth={2} />
+                  <Area type="monotone" dataKey="realizado" name="Realizado" stroke="#F59E0B" fill="#EF4444" fillOpacity={0.15} strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Gastos por Categoria + Etapas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Top Categories */}
