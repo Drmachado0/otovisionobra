@@ -35,6 +35,7 @@ export default function FluxoCaixaPage() {
   const [search, setSearch] = useState("");
   const [filterTipo, setFilterTipo] = useState<string>("todos");
   const [filterCategoria, setFilterCategoria] = useState<string>("todos");
+  const [filterConta, setFilterConta] = useState<string>("todas");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [saving, setSaving] = useState(false);
@@ -78,6 +79,8 @@ export default function FluxoCaixaPage() {
       query = query.eq("tipo", filterTipo);
     }
     if (filterCategoria !== "todos") query = query.eq("categoria", filterCategoria);
+    if (filterConta === "sem_conta") query = query.or("conta_id.is.null,conta_id.eq.");
+    else if (filterConta !== "todas") query = query.eq("conta_id", filterConta);
     if (dateFrom) query = query.gte("data", dateFrom);
     if (dateTo) query = query.lte("data", dateTo);
     if (search) query = query.or(`descricao.ilike.%${search}%,categoria.ilike.%${search}%`);
@@ -90,7 +93,7 @@ export default function FluxoCaixaPage() {
     if (data) setTransacoes(data as TransacaoFull[]);
     if (count !== null) setTotalCount(count);
     setLoading(false);
-  }, [page, filterTipo, filterCategoria, dateFrom, dateTo, search]);
+  }, [page, filterTipo, filterCategoria, filterConta, dateFrom, dateTo, search]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -207,7 +210,14 @@ export default function FluxoCaixaPage() {
       <div className="flex items-center justify-between page-header">
         <div>
           <h1 className="text-2xl font-bold">Fluxo de Caixa</h1>
-          <p className="text-sm text-muted-foreground">Entradas e saídas financeiras</p>
+          <p className="text-sm text-muted-foreground">
+            Entradas e saídas financeiras
+            {filterConta !== "todas" && (
+              <span className="ml-1 text-primary">
+                (filtrado por: {filterConta === "sem_conta" ? "Sem conta vinculada" : contas.find(c => c.id === filterConta)?.nome || filterConta})
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowRecorrentes(true)} className="gap-2">
@@ -262,17 +272,28 @@ export default function FluxoCaixaPage() {
           <option value="todos">Categoria</option>
           {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
+        <select
+          value={filterConta}
+          onChange={e => { setFilterConta(e.target.value); setPage(0); }}
+          className="px-4 py-2.5 rounded-lg bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="todas">🏦 Todas as Contas</option>
+          {contas.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          <option value="sem_conta">Sem conta vinculada</option>
+        </select>
       </div>
 
-      {/* Date range */}
+      {/* Date range + Clear all */}
       <div className="flex flex-wrap gap-3 items-center">
         <Filter className="w-4 h-4 text-muted-foreground" />
         <Input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0); }} className="w-auto" placeholder="De" />
         <span className="text-muted-foreground text-sm">até</span>
         <Input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0); }} className="w-auto" placeholder="Até" />
-        {(dateFrom || dateTo) && (
-          <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); setPage(0); }}>
-            <X className="w-3 h-3 mr-1" /> Limpar
+        {(dateFrom || dateTo || filterTipo !== "todos" || filterCategoria !== "todos" || filterConta !== "todas" || search) && (
+          <Button variant="ghost" size="sm" onClick={() => {
+            setDateFrom(""); setDateTo(""); setFilterTipo("todos"); setFilterCategoria("todos"); setFilterConta("todas"); setSearch(""); setPage(0);
+          }}>
+            <X className="w-3 h-3 mr-1" /> Limpar filtros
           </Button>
         )}
       </div>
