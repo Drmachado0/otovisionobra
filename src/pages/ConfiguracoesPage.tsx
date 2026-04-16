@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import {
   Settings, Shield, Download, Trash2, Users, Info, AlertTriangle,
-  Loader2, Check, Building2, Save,
+  Loader2, Check, Building2, Save, Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { formatCurrency } from "@/lib/formatters";
 
@@ -56,6 +57,43 @@ export default function ConfiguracoesPage() {
   const [deleting, setDeleting] = useState(false);
   const [comissaoRate, setComissaoRate] = useState("8");
 
+  // Notification preferences
+  const NOTIF_TYPES = [
+    { tipo: "etapa_atrasada", label: "Etapas atrasadas", desc: "Notificar quando etapas passam do prazo" },
+    { tipo: "comissao_pendente", label: "Comissões pendentes", desc: "Notificar sobre comissões aguardando pagamento" },
+    { tipo: "parcela_vencendo", label: "Parcelas vencendo", desc: "Notificar 3 dias antes do vencimento de parcelas" },
+    { tipo: "nf_pendente", label: "Notas fiscais pendentes", desc: "Notificar NFs pendentes há mais de 7 dias" },
+    { tipo: "orcamento_alerta", label: "Alerta de orçamento", desc: "Notificar quando gastos ultrapassam 80% do orçamento" },
+  ];
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>({});
+  const [loadingNotifPrefs, setLoadingNotifPrefs] = useState(true);
+
+  const fetchNotifPrefs = useCallback(async () => {
+    if (!user) return;
+    setLoadingNotifPrefs(true);
+    const { data } = await supabase
+      .from("obra_notification_preferences")
+      .select("tipo, enabled")
+      .eq("user_id", user.id);
+    const prefs: Record<string, boolean> = {};
+    for (const t of NOTIF_TYPES) prefs[t.tipo] = true; // default enabled
+    for (const row of data || []) prefs[(row as any).tipo] = (row as any).enabled;
+    setNotifPrefs(prefs);
+    setLoadingNotifPrefs(false);
+  }, [user]);
+
+  const toggleNotifPref = async (tipo: string, enabled: boolean) => {
+    if (!user) return;
+    setNotifPrefs(prev => ({ ...prev, [tipo]: enabled }));
+    const { error } = await supabase
+      .from("obra_notification_preferences")
+      .upsert({ user_id: user.id, tipo, enabled } as any, { onConflict: "user_id,tipo" });
+    if (error) {
+      toast.error("Erro ao salvar preferência");
+      setNotifPrefs(prev => ({ ...prev, [tipo]: !enabled }));
+    }
+  };
+
   // Obra config state
   const [obraConfig, setObraConfig] = useState<ObraConfig>(defaultObraConfig);
   const [obraConfigId, setObraConfigId] = useState<string | null>(null);
@@ -64,10 +102,11 @@ export default function ConfiguracoesPage() {
 
   useEffect(() => {
     fetchObraConfig();
+    fetchNotifPrefs();
     if (role === "admin") {
       fetchUsers();
     }
-  }, [role]);
+  }, [role, fetchNotifPrefs]);
 
   const fetchObraConfig = async () => {
     setLoadingObra(true);
@@ -401,6 +440,39 @@ export default function ConfiguracoesPage() {
             <Input value="BRL (R$)" disabled className="mt-1 max-w-[160px]" />
           </div>
         </div>
+      </section>
+
+      {/* Notificações */}
+      <section className="glass-card p-6 space-y-4">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Bell className="w-5 h-5 text-primary" /> Notificações
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Ative ou desative cada tipo de notificação automática.
+        </p>
+        {loadingNotifPrefs ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {NOTIF_TYPES.map((t) => (
+              <div
+                key={t.tipo}
+                className="flex items-center justify-between p-3 rounded-lg bg-secondary/20"
+              >
+                <div>
+                  <p className="text-sm font-medium">{t.label}</p>
+                  <p className="text-xs text-muted-foreground">{t.desc}</p>
+                </div>
+                <Switch
+                  checked={notifPrefs[t.tipo] ?? true}
+                  onCheckedChange={(checked) => toggleNotifPref(t.tipo, checked)}
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Gerenciamento de Usuários */}

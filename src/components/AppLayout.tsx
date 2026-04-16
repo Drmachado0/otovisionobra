@@ -8,6 +8,7 @@ import {
 import UserMenu from "@/components/UserMenu";
 import NotificationBell from "@/components/NotificationBell";
 import { useUserRole, type AppRole } from "@/hooks/useUserRole";
+import { useNotificationGenerator } from "@/hooks/useNotificationGenerator";
 
 interface NavItem {
   path: string;
@@ -43,6 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { role } = useUserRole();
+  useNotificationGenerator();
 
   const visibleItems = navItems.filter(
     (item) => !item.allowedRoles || (role && item.allowedRoles.includes(role))

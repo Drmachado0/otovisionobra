@@ -1911,6 +1911,30 @@ export type Database = {
         }
         Relationships: []
       }
+      obra_notification_preferences: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          tipo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          tipo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          tipo?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       obra_orcamentos: {
         Row: {
           anexo_id: string
