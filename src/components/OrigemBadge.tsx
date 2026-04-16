@@ -14,6 +14,10 @@ function getOrigemBadgeConfig(origem?: string | null) {
       return { label: "Conciliação", className: "badge-primary" };
     case "pasta":
       return { label: "Pasta", className: "badge-success" };
+    case "recorrente":
+      return { label: "Recorrente", className: "badge-primary" };
+    case "nf":
+      return { label: "NF", className: "badge-info" };
     default:
       return { label: "Manual", className: "badge-muted" };
   }

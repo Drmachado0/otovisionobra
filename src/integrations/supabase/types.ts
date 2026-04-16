@@ -2128,8 +2128,12 @@ export type Database = {
           origem_id: string | null
           origem_tipo: string | null
           recorrencia: string
+          recorrencia_ativa: boolean
           recorrencia_fim: string | null
+          recorrencia_frequencia: string | null
           recorrencia_grupo_id: string | null
+          recorrencia_max_ocorrencias: number | null
+          recorrencia_ocorrencias_criadas: number
           referencia: string
           tipo: string
           updated_at: string
@@ -2154,8 +2158,12 @@ export type Database = {
           origem_id?: string | null
           origem_tipo?: string | null
           recorrencia?: string
+          recorrencia_ativa?: boolean
           recorrencia_fim?: string | null
+          recorrencia_frequencia?: string | null
           recorrencia_grupo_id?: string | null
+          recorrencia_max_ocorrencias?: number | null
+          recorrencia_ocorrencias_criadas?: number
           referencia?: string
           tipo?: string
           updated_at?: string
@@ -2180,8 +2188,12 @@ export type Database = {
           origem_id?: string | null
           origem_tipo?: string | null
           recorrencia?: string
+          recorrencia_ativa?: boolean
           recorrencia_fim?: string | null
+          recorrencia_frequencia?: string | null
           recorrencia_grupo_id?: string | null
+          recorrencia_max_ocorrencias?: number | null
+          recorrencia_ocorrencias_criadas?: number
           referencia?: string
           tipo?: string
           updated_at?: string
