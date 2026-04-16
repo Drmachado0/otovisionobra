@@ -2,10 +2,17 @@ import { useState, useRef, useEffect } from "react";
 import { Bell, Check, AlertTriangle, Info, ShoppingCart } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 
+import { Calendar, FileText, Percent, Wallet } from "lucide-react";
+
 const ICON_MAP: Record<string, React.ReactNode> = {
   alerta: <AlertTriangle className="w-4 h-4 text-warning" />,
   info: <Info className="w-4 h-4 text-info" />,
   compra: <ShoppingCart className="w-4 h-4 text-primary" />,
+  etapa_atrasada: <Calendar className="w-4 h-4 text-destructive" />,
+  comissao_pendente: <Percent className="w-4 h-4 text-warning" />,
+  parcela_vencendo: <Wallet className="w-4 h-4 text-destructive" />,
+  nf_pendente: <FileText className="w-4 h-4 text-warning" />,
+  orcamento_alerta: <AlertTriangle className="w-4 h-4 text-destructive" />,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -69,7 +76,7 @@ export default function NotificationBell() {
             {notifications.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Nenhuma notificação</p>
             ) : (
-              notifications.slice(0, 20).map((n) => (
+              notifications.slice(0, 50).map((n) => (
                 <button
                   key={n.id}
                   onClick={() => {
