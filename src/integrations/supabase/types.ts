@@ -2132,6 +2132,7 @@ export type Database = {
           recorrencia_fim: string | null
           recorrencia_frequencia: string | null
           recorrencia_grupo_id: string | null
+          recorrencia_mae: boolean
           recorrencia_max_ocorrencias: number | null
           recorrencia_ocorrencias_criadas: number
           referencia: string
@@ -2162,6 +2163,7 @@ export type Database = {
           recorrencia_fim?: string | null
           recorrencia_frequencia?: string | null
           recorrencia_grupo_id?: string | null
+          recorrencia_mae?: boolean
           recorrencia_max_ocorrencias?: number | null
           recorrencia_ocorrencias_criadas?: number
           referencia?: string
@@ -2192,6 +2194,7 @@ export type Database = {
           recorrencia_fim?: string | null
           recorrencia_frequencia?: string | null
           recorrencia_grupo_id?: string | null
+          recorrencia_mae?: boolean
           recorrencia_max_ocorrencias?: number | null
           recorrencia_ocorrencias_criadas?: number
           referencia?: string

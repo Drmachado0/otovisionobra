@@ -2,9 +2,10 @@ interface OrigemBadgeProps {
   origem?: string | null;
   compact?: boolean;
   className?: string;
+  isMae?: boolean;
 }
 
-function getOrigemBadgeConfig(origem?: string | null) {
+function getOrigemBadgeConfig(origem?: string | null, isMae?: boolean) {
   switch (origem) {
     case "ia":
       return { label: "IA", className: "badge-info" };
@@ -15,7 +16,7 @@ function getOrigemBadgeConfig(origem?: string | null) {
     case "pasta":
       return { label: "Pasta", className: "badge-success" };
     case "recorrente":
-      return { label: "Recorrente", className: "badge-primary" };
+      return { label: isMae ? "Recorrente 🔄" : "Recorrente", className: "badge-primary" };
     case "nf":
       return { label: "NF", className: "badge-info" };
     default:
@@ -23,8 +24,8 @@ function getOrigemBadgeConfig(origem?: string | null) {
   }
 }
 
-export default function OrigemBadge({ origem, compact = false, className = "" }: OrigemBadgeProps) {
-  const badge = getOrigemBadgeConfig(origem);
+export default function OrigemBadge({ origem, compact = false, className = "", isMae = false }: OrigemBadgeProps) {
+  const badge = getOrigemBadgeConfig(origem, isMae);
   const compactClass = compact ? " text-[10px]" : "";
 
   return <span className={`${badge.className}${compactClass}${className ? ` ${className}` : ""}`}>{badge.label}</span>;

@@ -67,17 +67,14 @@ export default function RecorrentesDrawer({ open, onOpenChange, onUpdated }: Pro
     setLoading(true);
     const { data } = await supabase
       .from("obra_transacoes_fluxo")
-      .select("id, descricao, valor, tipo, categoria, recorrencia_frequencia, recorrencia_ativa, recorrencia_fim, recorrencia_max_ocorrencias, recorrencia_ocorrencias_criadas, data, recorrencia_grupo_id")
+      .select("id, descricao, valor, tipo, categoria, recorrencia_frequencia, recorrencia_ativa, recorrencia_fim, recorrencia_max_ocorrencias, recorrencia_ocorrencias_criadas, data, recorrencia_grupo_id, recorrencia_mae")
       .eq("user_id", user.id)
+      .eq("recorrencia_mae", true)
       .not("recorrencia_frequencia", "is", null)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
-    // Filter to only templates (where recorrencia_grupo_id === id or null)
-    const templates = (data || []).filter((d: any) =>
-      d.recorrencia_grupo_id === d.id || !d.recorrencia_grupo_id
-    );
-    setItems(templates as RecurringTx[]);
+    setItems((data || []) as RecurringTx[]);
     setLoading(false);
   }, [user]);
 
