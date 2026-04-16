@@ -12,6 +12,7 @@ import {
   TrendingUp,
   ChevronRight,
   Trash2,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,28 @@ interface FormErrors {
   datas?: string;
 }
 
+/** Returns budget health: green (<= 80%), yellow (80-100%), red (> 100%) */
+function getBudgetHealth(custoReal: number, custoPrevisto: number): "green" | "yellow" | "red" | null {
+  if (custoPrevisto <= 0) return null;
+  const pct = (custoReal / custoPrevisto) * 100;
+  if (pct > 100) return "red";
+  if (pct > 80) return "yellow";
+  return "green";
+}
+
+function getBudgetEmoji(health: "green" | "yellow" | "red" | null) {
+  if (health === "green") return "🟢";
+  if (health === "yellow") return "🟡";
+  if (health === "red") return "🔴";
+  return "";
+}
+
+function getBudgetBarColor(health: "green" | "yellow" | "red" | null) {
+  if (health === "red") return "bg-[#EF4444]";
+  if (health === "yellow") return "bg-[#F59E0B]";
+  return "bg-[#10B981]";
+}
+
 export default function CronogramaPage() {
   const [etapas, setEtapas] = useState<Etapa[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,13 +90,15 @@ export default function CronogramaPage() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [deleteTarget, setDeleteTarget] = useState<Etapa | null>(null);
+  const [orcamentoObra, setOrcamentoObra] = useState(0);
 
   const fetchData = useCallback(async () => {
-    const { data } = await supabase
-      .from("obra_cronograma")
-      .select("*")
-      .order("inicio_previsto", { ascending: true });
+    const [{ data }, { data: config }] = await Promise.all([
+      supabase.from("obra_cronograma").select("*").order("inicio_previsto", { ascending: true }),
+      supabase.from("obra_config").select("orcamento_total").limit(1).maybeSingle(),
+    ]);
     if (data) setEtapas(data as unknown as Etapa[]);
+    if (config) setOrcamentoObra(Number(config.orcamento_total) || 0);
     setLoading(false);
   }, []);
 
@@ -112,7 +137,7 @@ export default function CronogramaPage() {
     if (!form.nome.trim()) errs.nome = "Nome é obrigatório";
     const pct = Number(form.percentual_conclusao);
     if (pct < 0 || pct > 100) errs.percentual_conclusao = "Deve ser entre 0 e 100";
-    if (Number(form.custo_previsto) < 0) errs.custo_previsto = "Custo não pode ser negativo";
+    if (Number(form.custo_previsto) < 0) errs.custo_previsto = "Orçamento não pode ser negativo";
     if (form.inicio_previsto && form.fim_previsto && form.fim_previsto < form.inicio_previsto) {
       errs.datas = "Data fim deve ser após data início";
     }
@@ -123,6 +148,22 @@ export default function CronogramaPage() {
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
+
+    const newCustoPrevisto = Number(form.custo_previsto);
+
+    // Check budget sum vs obra total
+    if (orcamentoObra > 0 && newCustoPrevisto > 0) {
+      const somaOutras = etapas
+        .filter(e => e.id !== editId)
+        .reduce((s, e) => s + e.custo_previsto, 0);
+      const novaTotal = somaOutras + newCustoPrevisto;
+      if (novaTotal > orcamentoObra) {
+        toast.warning(
+          `⚠️ A soma dos orçamentos das etapas (${formatCurrency(novaTotal)}) ultrapassa o orçamento total da obra (${formatCurrency(orcamentoObra)})`,
+          { duration: 6000 }
+        );
+      }
+    }
 
     // Auto-status based on progress
     let autoStatus = form.status;
@@ -139,7 +180,7 @@ export default function CronogramaPage() {
       nome: form.nome, categoria: form.categoria, responsavel: form.responsavel,
       inicio_previsto: form.inicio_previsto, fim_previsto: form.fim_previsto,
       status: autoStatus, percentual_conclusao: pct,
-      custo_previsto: Number(form.custo_previsto), descricao: form.descricao, observacoes: form.observacoes,
+      custo_previsto: newCustoPrevisto, descricao: form.descricao, observacoes: form.observacoes,
     };
 
     if (editId) {
@@ -195,6 +236,8 @@ export default function CronogramaPage() {
     );
   }
 
+  const orcHealthGlobal = getBudgetHealth(stats.custoReal, stats.custoTotal);
+
   return (
     <div className="space-y-6 animate-slide-in">
       <div className="flex items-center justify-between">
@@ -221,9 +264,19 @@ export default function CronogramaPage() {
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Atrasadas</p>
           <p className="text-xl font-bold mt-1">{stats.atrasadas}</p>
         </div>
-        <div className="stat-card-warning p-4">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider">Acima Orçamento</p>
-          <p className="text-xl font-bold mt-1">{stats.acima}</p>
+        <div className="glass-card p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Wallet className="w-3.5 h-3.5" /> Orçamento Etapas
+          </p>
+          <p className={`text-lg font-bold mt-1 ${stats.acima > 0 ? "text-[#EF4444]" : ""}`}>
+            {formatCurrency(stats.custoReal)}
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            de {formatCurrency(stats.custoTotal)} previsto
+            {stats.acima > 0 && (
+              <span className="text-[#EF4444] font-medium ml-1">• {stats.acima} acima</span>
+            )}
+          </p>
         </div>
       </div>
 
@@ -251,6 +304,7 @@ export default function CronogramaPage() {
               const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG["Não Iniciada"];
               const isOverBudget = item.custo_real > item.custo_previsto && item.custo_previsto > 0;
               const isLate = item.status !== "Concluída" && item.fim_previsto && new Date(item.fim_previsto) < new Date();
+              const health = getBudgetHealth(item.custo_real, item.custo_previsto);
               return (
                 <div
                   key={item.id}
@@ -261,7 +315,10 @@ export default function CronogramaPage() {
                     <div className={`w-6 h-6 rounded-md flex items-center justify-center ${cfg.bg}`}>
                       <cfg.icon className={`w-3.5 h-3.5 ${cfg.color}`} />
                     </div>
-                    <span className="text-sm font-medium flex-1">{item.nome}</span>
+                    <span className="text-sm font-medium flex-1">
+                      {item.nome}
+                      {health && <span className="ml-1.5 text-xs">{getBudgetEmoji(health)}</span>}
+                    </span>
                     <div className="flex items-center gap-2">
                       {isLate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium">Atrasada</span>}
                       {isOverBudget && <span className="text-[10px] px-1.5 py-0.5 rounded bg-warning/10 text-warning font-medium">Acima</span>}
@@ -308,28 +365,45 @@ export default function CronogramaPage() {
           <div className="space-y-3">
             {etapas.map((e) => {
               const cfg = STATUS_CONFIG[e.status] || STATUS_CONFIG["Não Iniciada"];
-              const overBudget = e.custo_real > e.custo_previsto && e.custo_previsto > 0;
+              const health = getBudgetHealth(e.custo_real, e.custo_previsto);
+              const financialPct = e.custo_previsto > 0 ? (e.custo_real / e.custo_previsto) * 100 : 0;
               return (
                 <div
                   key={e.id}
                   onClick={() => openEdit(e)}
-                  className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition-colors"
+                  className="p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 cursor-pointer transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cfg.bg}`}>
-                      <cfg.icon className={`w-4 h-4 ${cfg.color}`} />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${cfg.bg}`}>
+                        <cfg.icon className={`w-4 h-4 ${cfg.color}`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{e.nome}</p>
+                        <p className="text-xs text-muted-foreground">{e.categoria || e.responsavel || "—"}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{e.nome}</p>
-                      <p className="text-xs text-muted-foreground">{e.categoria || e.responsavel || "—"}</p>
+                    <div className="text-right">
+                      <p className={`text-sm font-semibold ${health === "red" ? "text-[#EF4444]" : ""}`}>
+                        {formatCurrency(e.custo_real)} / {formatCurrency(e.custo_previsto)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{e.percentual_conclusao}% concluído</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-semibold ${overBudget ? "text-destructive" : ""}`}>
-                      {formatCurrency(e.custo_real)} / {formatCurrency(e.custo_previsto)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{e.percentual_conclusao}% concluído</p>
-                  </div>
+                  {/* Financial progress bar */}
+                  {e.custo_previsto > 0 && (
+                    <div className="mt-2 ml-11">
+                      <div className="relative h-1.5 rounded-full bg-secondary/50 overflow-hidden">
+                        <div
+                          className={`absolute top-0 left-0 h-full rounded-full transition-all duration-500 ${getBudgetBarColor(health)}`}
+                          style={{ width: `${Math.min(financialPct, 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {financialPct.toFixed(1)}% do orçamento
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -379,9 +453,21 @@ export default function CronogramaPage() {
               </div>
             </div>
             <div>
-              <Label>Custo Previsto (R$)</Label>
-              <Input type="number" value={form.custo_previsto} onChange={e => setForm(f => ({ ...f, custo_previsto: Number(e.target.value) }))} />
+              <Label>Orçamento Previsto (R$)</Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.custo_previsto}
+                onChange={e => setForm(f => ({ ...f, custo_previsto: Number(e.target.value) }))}
+                placeholder="0,00"
+              />
               {errors.custo_previsto && <p className="text-xs text-destructive mt-1">{errors.custo_previsto}</p>}
+              {orcamentoObra > 0 && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Orçamento total da obra: {formatCurrency(orcamentoObra)}
+                </p>
+              )}
             </div>
             <div><Label>Descrição</Label><Textarea value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} /></div>
             <div><Label>Observações</Label><Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} /></div>
