@@ -65,11 +65,15 @@ export default function FluxoCaixaPage() {
   const fetchData = useCallback(async () => {
     let query = supabase
       .from("obra_transacoes_fluxo")
-      .select("id, tipo, valor, data, categoria, descricao, forma_pagamento, observacoes, origem_tipo, conciliado, recorrencia, recorrencia_grupo_id, conta_id, referencia, created_at", { count: "exact" })
+      .select("id, tipo, valor, data, categoria, descricao, forma_pagamento, observacoes, origem_tipo, conciliado, recorrencia, recorrencia_grupo_id, recorrencia_mae, conta_id, referencia, created_at", { count: "exact" })
       .is("deleted_at", null)
       .order("data", { ascending: false });
 
-    if (filterTipo !== "todos") query = query.eq("tipo", filterTipo);
+    if (filterTipo === "recorrentes") {
+      query = query.not("recorrencia_grupo_id", "is", null);
+    } else if (filterTipo !== "todos") {
+      query = query.eq("tipo", filterTipo);
+    }
     if (filterCategoria !== "todos") query = query.eq("categoria", filterCategoria);
     if (dateFrom) query = query.gte("data", dateFrom);
     if (dateTo) query = query.lte("data", dateTo);
@@ -148,6 +152,7 @@ export default function FluxoCaixaPage() {
       basePayload.recorrencia_frequencia = recFrequencia;
       basePayload.recorrencia_ativa = true;
       basePayload.recorrencia_ocorrencias_criadas = 0;
+      basePayload.recorrencia_mae = true;
       if (recFim) basePayload.recorrencia_fim = recFim;
       if (recMaxOcc) basePayload.recorrencia_max_ocorrencias = Number(recMaxOcc);
     }
@@ -237,6 +242,7 @@ export default function FluxoCaixaPage() {
           <option value="todos">Todos</option>
           <option value="Entrada">Entradas</option>
           <option value="Saída">Saídas</option>
+          <option value="recorrentes">Recorrentes</option>
         </select>
         <select
           value={filterCategoria}
@@ -285,7 +291,7 @@ export default function FluxoCaixaPage() {
               </thead>
               <tbody>
                 {transacoes.map((t: any) => {
-                  const isRecurring = t.recorrencia_grupo_id || (t.recorrencia && t.recorrencia !== "Única");
+                  const isRecurring = t.recorrencia_mae || t.recorrencia_grupo_id || (t.recorrencia && t.recorrencia !== "Única");
                   return (
                     <tr key={t.id} onClick={() => openDetail(t)} className="table-row-interactive">
                       <td className="px-4 py-3">
