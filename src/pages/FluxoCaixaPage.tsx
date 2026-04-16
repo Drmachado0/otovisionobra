@@ -40,6 +40,8 @@ export default function FluxoCaixaPage() {
 
   const [contas, setContas] = useState<{ id: string; nome: string }[]>([]);
 
+  const [valorError, setValorError] = useState("");
+
   const [form, setForm] = useState({
     tipo: "Saída",
     valor: "",
@@ -75,6 +77,14 @@ export default function FluxoCaixaPage() {
   }, [page, filterTipo, filterCategoria, dateFrom, dateTo, search]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // BUG-001 fix: sync selectedTransacao with fresh data
+  useEffect(() => {
+    if (selectedTransacao) {
+      const updated = transacoes.find(t => t.id === selectedTransacao.id);
+      if (updated) setSelectedTransacao(updated);
+    }
+  }, [transacoes]);
   useEffect(() => {
     supabase.from("obra_contas_financeiras").select("id, nome").eq("ativa", true).then(({ data }) => {
       if (data) setContas(data);
@@ -84,10 +94,13 @@ export default function FluxoCaixaPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.valor || Number(form.valor) <= 0) {
+    const numVal = Number(form.valor);
+    if (!form.valor || isNaN(numVal) || numVal <= 0) {
+      setValorError("Informe um valor maior que zero");
       toast.error("Informe um valor válido");
       return;
     }
+    setValorError("");
     setSaving(true);
     const { error } = await supabase.from("obra_transacoes_fluxo").insert({
       user_id: user!.id,
@@ -295,7 +308,8 @@ export default function FluxoCaixaPage() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
-                <Input type="number" step="0.01" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} placeholder="0,00" className="mt-1" />
+                <Input type="number" step="0.01" min="0.01" value={form.valor} onChange={e => { setForm(f => ({ ...f, valor: e.target.value })); setValorError(""); }} placeholder="0,00" className={`mt-1 ${valorError ? "border-destructive ring-destructive" : ""}`} />
+                {valorError && <p className="text-xs text-destructive mt-1">{valorError}</p>}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
