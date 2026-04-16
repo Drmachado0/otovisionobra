@@ -7,12 +7,18 @@ import {
   DollarSign, TrendingDown, Wallet, Activity, AlertTriangle,
   ArrowUpRight, ArrowDownRight, Ruler, Flame, Target,
   ShieldAlert, ArrowRight, CreditCard, ShoppingCart,
-  Landmark, Receipt, Calendar,
+  Landmark, Receipt, Calendar, BarChart3,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import OrigemBadge from "@/components/OrigemBadge";
 import TransacaoDetailDrawer, { type TransacaoFull } from "@/components/TransacaoDetailDrawer";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  BarChart, Bar, LineChart, Line, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
+  ResponsiveContainer, ComposedChart, ReferenceLine, Legend,
+} from "recharts";
 
 interface TransacaoRow {
   id: string;
