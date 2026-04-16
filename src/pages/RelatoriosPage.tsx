@@ -547,7 +547,6 @@ export default function RelatoriosPage() {
               <Download className="w-4 h-4" /> CSV
             </Button>
           </div>
-          </div>
           <div className="glass-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
