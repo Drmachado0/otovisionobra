@@ -68,6 +68,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [selectedTransacao, setSelectedTransacao] = useState<TransacaoFull | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [allTransForCharts, setAllTransForCharts] = useState<{ tipo: string; valor: number; data: string }[]>([]);
+  const [chartView, setChartView] = useState<string>("mensal");
 
   const fetchData = useCallback(async () => {
     const [configRes, allTransRes, recentTransRes, etapasRes, comprasRes, comissoesRes, contasRes] = await Promise.all([
