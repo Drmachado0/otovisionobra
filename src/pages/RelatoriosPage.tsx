@@ -236,6 +236,92 @@ export default function RelatoriosPage() {
     toast.success(`${filename}.csv exportado`);
   };
 
+  const exportPDF = (
+    tabName: string,
+    summaryRows: [string, string][],
+    columns: { key: string; label: string; align?: "right" }[],
+    data: any[],
+    formatters?: Record<string, (v: any) => string>,
+  ) => {
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const now = new Date();
+    const dateStr = `${String(now.getDate()).padStart(2,"0")}/${String(now.getMonth()+1).padStart(2,"0")}/${now.getFullYear()} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+    const pageW = doc.internal.pageSize.getWidth();
+
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(30, 58, 95);
+    doc.text("OTOVISION - Gestão de Obra", 14, 18);
+    doc.setFontSize(12);
+    doc.setTextColor(80);
+    doc.text(`Relatório ${tabName}`, 14, 26);
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    doc.text(`Gerado em: ${dateStr}`, 14, 32);
+    let filterText = "";
+    if (dataInicio || dataFim) filterText += `Período: ${dataInicio || "—"} a ${dataFim || "—"}`;
+    if (categoriaFiltro !== "todas") filterText += `${filterText ? " | " : ""}Categoria: ${categoriaFiltro}`;
+    if (filterText) doc.text(filterText, 14, 37);
+
+    // Summary box
+    let startY = filterText ? 42 : 37;
+    if (summaryRows.length) {
+      doc.setFillColor(240, 243, 248);
+      doc.roundedRect(14, startY, pageW - 28, 12, 2, 2, "F");
+      doc.setFontSize(9);
+      doc.setTextColor(50);
+      const segW = (pageW - 28) / summaryRows.length;
+      summaryRows.forEach(([label, value], i) => {
+        const x = 14 + segW * i + segW / 2;
+        doc.text(`${label}: ${value}`, x, startY + 7.5, { align: "center" });
+      });
+      startY += 16;
+    }
+
+    // Table
+    const head = [columns.map(c => c.label)];
+    const body = data.map(row => columns.map(c => {
+      const val = row[c.key];
+      if (formatters?.[c.key]) return formatters[c.key](val);
+      return val ?? "";
+    }));
+
+    const colStyles: Record<number, any> = {};
+    columns.forEach((c, i) => { if (c.align === "right") colStyles[i] = { halign: "right" }; });
+
+    autoTable(doc, {
+      head,
+      body,
+      startY,
+      theme: "striped",
+      headStyles: { fillColor: [30, 58, 95], textColor: 255, fontSize: 8, fontStyle: "bold" },
+      bodyStyles: { fontSize: 7.5, textColor: 50 },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      columnStyles: colStyles,
+      margin: { left: 14, right: 14 },
+      didDrawPage: (d: any) => {
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        doc.setFontSize(7);
+        doc.setTextColor(150);
+        doc.text(`OTOVISION v1.0 - Página ${d.pageNumber} de ${pageCount}`, pageW / 2, doc.internal.pageSize.getHeight() - 8, { align: "center" });
+      },
+    });
+
+    // Fix page numbers (rewrite footer on all pages)
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(150);
+      const y = doc.internal.pageSize.getHeight() - 8;
+      doc.text(`OTOVISION v1.0 - Página ${i} de ${totalPages}`, pageW / 2, y, { align: "center" });
+    }
+
+    const fileDate = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
+    doc.save(`OTOVISION_Relatorio_${tabName}_${fileDate}.pdf`);
+    toast.success(`PDF ${tabName} exportado`);
+  };
+
   const filteredTrans = filterByCategoria(filterByDate(transacoes, "data"));
   const filteredCompras = filterByCategoria(filterByDate(compras, "data"));
   const filteredComissoes = filterByDate(comissoes, "data_pagamento");
