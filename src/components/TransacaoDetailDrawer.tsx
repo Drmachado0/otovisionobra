@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import OrigemBadge from "@/components/OrigemBadge";
 import { Separator } from "@/components/ui/separator";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { AttachmentList } from "@/components/TransactionAttachments";
 import {
   ArrowUpRight,
   ArrowDownRight,
@@ -197,6 +198,11 @@ export default function TransacaoDetailDrawer({ transacao, open, onOpenChange, o
                 </div>
               )}
             </div>
+
+            <Separator />
+
+            {/* Attachments */}
+            <AttachmentList transactionId={t.id} />
 
             <Separator />
 
