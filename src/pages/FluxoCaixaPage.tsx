@@ -52,6 +52,7 @@ export default function FluxoCaixaPage() {
   const [recFrequencia, setRecFrequencia] = useState("Mensal");
   const [recFim, setRecFim] = useState("");
   const [recMaxOcc, setRecMaxOcc] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const [form, setForm] = useState({
     tipo: "Saída",
