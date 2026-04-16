@@ -143,6 +143,65 @@ export default function DashboardPage() {
     return { custoM2, burnRate, diasRestantes, progressoGeral, etapasAtrasadas, projecao, risco };
   }, [totalGasto, config, saldo, etapas, orcamentoTotal]);
 
+  // Chart data
+  const chartData = useMemo(() => {
+    if (!allTransForCharts.length) return { mensal: [], semanal: [] };
+    const monthMap: Record<string, { entradas: number; saidas: number }> = {};
+    allTransForCharts.forEach(t => {
+      if (!t.data) return;
+      const key = t.data.substring(0, 7);
+      if (!monthMap[key]) monthMap[key] = { entradas: 0, saidas: 0 };
+      if (t.tipo === "Entrada") monthMap[key].entradas += t.valor;
+      else monthMap[key].saidas += t.valor;
+    });
+    const sortedMonths = Object.keys(monthMap).sort();
+    let acum = 0;
+    const mensal = sortedMonths.map(m => {
+      const d = monthMap[m];
+      acum += d.entradas - d.saidas;
+      const [y, mo] = m.split("-");
+      const mNames = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+      return { label: `${mNames[parseInt(mo) - 1]}/${y.slice(2)}`, entradas: d.entradas, saidas: d.saidas, acumulado: acum };
+    });
+    const now = new Date();
+    const weekBuckets: { start: Date; end: Date; entradas: number; saidas: number }[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const end = new Date(now); end.setDate(end.getDate() - i * 7);
+      const start = new Date(end); start.setDate(start.getDate() - 6);
+      weekBuckets.push({ start, end, entradas: 0, saidas: 0 });
+    }
+    allTransForCharts.forEach(t => {
+      if (!t.data) return;
+      const td = new Date(t.data);
+      for (const b of weekBuckets) {
+        if (td >= b.start && td <= b.end) {
+          if (t.tipo === "Entrada") b.entradas += t.valor; else b.saidas += t.valor;
+          break;
+        }
+      }
+    });
+    let wAcum = 0;
+    const semanal = weekBuckets.map(b => {
+      wAcum += b.entradas - b.saidas;
+      const f = (d: Date) => `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}`;
+      return { label: f(b.start), entradas: b.entradas, saidas: b.saidas, acumulado: wAcum };
+    });
+    return { mensal, semanal };
+  }, [allTransForCharts]);
+
+  const budgetVsRealized = useMemo(() => {
+    const data = chartView === "mensal" ? chartData.mensal : chartData.semanal;
+    if (!data.length || !orcamentoTotal) return [];
+    const perPeriod = orcamentoTotal / data.length;
+    let bAcum = 0, rAcum = 0;
+    return data.map(d => {
+      bAcum += perPeriod; rAcum += d.saidas;
+      return { label: d.label, previsto: Math.round(bAcum), realizado: Math.round(rAcum) };
+    });
+  }, [chartData, chartView, orcamentoTotal]);
+
+  const activeChartData = chartView === "mensal" ? chartData.mensal : chartData.semanal;
+
   const alerts: string[] = [];
   if (percentual > 90) alerts.push("⚠️ Orçamento acima de 90%!");
   if (percentual > 100) alerts.push("🚨 Orçamento ULTRAPASSADO!");
