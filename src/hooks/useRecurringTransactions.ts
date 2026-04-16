@@ -34,15 +34,13 @@ export function useRecurringTransactions(onGenerated?: () => void) {
           .select("*")
           .eq("user_id", user.id)
           .eq("recorrencia_ativa", true)
+          .eq("recorrencia_mae", true)
           .not("recorrencia_frequencia", "is", null)
           .is("deleted_at", null);
 
         if (!mothers?.length) return;
 
-        // For each mother, also need to be the template (recorrencia_grupo_id === id OR is null with recorrencia != 'Única')
-        const templates = (mothers as any[]).filter(m =>
-          m.recorrencia_grupo_id === m.id || (!m.recorrencia_grupo_id && m.recorrencia !== "Única")
-        );
+        const templates = mothers as any[];
 
         let generated = 0;
 
@@ -99,6 +97,7 @@ export function useRecurringTransactions(onGenerated?: () => void) {
               referencia: tpl.referencia || "",
               conta_id: tpl.conta_id || "",
               origem_tipo: "recorrente",
+              recorrencia_mae: false,
             }));
 
             const { error } = await supabase.from("obra_transacoes_fluxo").insert(inserts as any);
