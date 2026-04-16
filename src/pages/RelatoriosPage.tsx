@@ -523,7 +523,20 @@ export default function RelatoriosPage() {
         </TabsContent>
 
         <TabsContent value="comissao" className="space-y-3 mt-4">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+              const totalCom = filteredComissoes.reduce((s, c) => s + Number(c.valor), 0);
+              const pagas = filteredComissoes.filter(c => c.pago).reduce((s, c) => s + Number(c.valor), 0);
+              const pend = totalCom - pagas;
+              exportPDF("Comissao",
+                [["Total", formatCurrency(totalCom)], ["Pagas", formatCurrency(pagas)], ["Pendentes", formatCurrency(pend)]],
+                [{ key: "mes", label: "Mês" }, { key: "valor", label: "Valor", align: "right" }, { key: "pago", label: "Status" }, { key: "data_pagamento", label: "Data Pgto" }, { key: "observacoes", label: "Observações" }],
+                filteredComissoes,
+                { valor: (v: number) => formatCurrency(Number(v)), pago: (v: boolean) => v ? "Pago" : "Pendente" },
+              );
+            }}>
+              <FileText className="w-4 h-4" /> PDF
+            </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={() =>
               exportCSV(filteredComissoes, "relatorio-comissao", [
                 { key: "mes", label: "Mês" }, { key: "valor", label: "Valor" },
@@ -533,6 +546,7 @@ export default function RelatoriosPage() {
             }>
               <Download className="w-4 h-4" /> CSV
             </Button>
+          </div>
           </div>
           <div className="glass-card overflow-hidden">
             <div className="overflow-x-auto">
