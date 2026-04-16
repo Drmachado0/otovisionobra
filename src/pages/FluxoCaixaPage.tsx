@@ -210,7 +210,14 @@ export default function FluxoCaixaPage() {
       <div className="flex items-center justify-between page-header">
         <div>
           <h1 className="text-2xl font-bold">Fluxo de Caixa</h1>
-          <p className="text-sm text-muted-foreground">Entradas e saídas financeiras</p>
+          <p className="text-sm text-muted-foreground">
+            Entradas e saídas financeiras
+            {filterConta !== "todas" && (
+              <span className="ml-1 text-primary">
+                (filtrado por: {filterConta === "sem_conta" ? "Sem conta vinculada" : contas.find(c => c.id === filterConta)?.nome || filterConta})
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowRecorrentes(true)} className="gap-2">
