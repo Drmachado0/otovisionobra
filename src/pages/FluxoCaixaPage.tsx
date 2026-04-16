@@ -320,6 +320,18 @@ export default function FluxoCaixaPage() {
                         <span className="flex items-center gap-1.5">
                           {isRecurring && <RefreshCw className="w-3 h-3 text-primary shrink-0" />}
                           {t.descricao || "-"}
+                          {attachmentCounts[t.id] > 0 && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Paperclip className="w-3 h-3 text-muted-foreground shrink-0" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {attachmentCounts[t.id]} anexo(s)
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -464,6 +476,9 @@ export default function FluxoCaixaPage() {
               <Label className="text-xs text-muted-foreground">Observações</Label>
               <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} className="mt-1" />
             </div>
+
+            {/* Attachments */}
+            <AttachmentUploadArea pendingFiles={pendingFiles} onPendingChange={setPendingFiles} />
             <Button type="submit" disabled={saving} className="w-full">
               {saving ? "Salvando..." : isRecorrente ? "Criar Recorrente" : "Registrar Transação"}
             </Button>
