@@ -6,7 +6,7 @@ import { useRecurringTransactions } from "@/hooks/useRecurringTransactions";
 import { formatCurrency, formatDate, CATEGORIAS_PADRAO } from "@/lib/formatters";
 import {
   Plus, ArrowUpRight, ArrowDownRight, Search, X,
-  ChevronLeft, ChevronRight, Filter, CreditCard, RefreshCw,
+  ChevronLeft, ChevronRight, Filter, CreditCard, RefreshCw, Paperclip,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import OrigemBadge from "@/components/OrigemBadge";
 import RecorrentesDrawer from "@/components/RecorrentesDrawer";
 import TransacaoDetailDrawer, { type TransacaoFull } from "@/components/TransacaoDetailDrawer";
+import { AttachmentUploadArea, uploadPendingAttachments, useAttachmentCounts } from "@/components/TransactionAttachments";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const CATEGORIAS = CATEGORIAS_PADRAO;
 const FORMAS_PAGAMENTO = ["PIX", "Cartão", "Boleto", "Dinheiro", "Transferência"];
@@ -50,6 +52,7 @@ export default function FluxoCaixaPage() {
   const [recFrequencia, setRecFrequencia] = useState("Mensal");
   const [recFim, setRecFim] = useState("");
   const [recMaxOcc, setRecMaxOcc] = useState("");
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const [form, setForm] = useState({
     tipo: "Saída",
@@ -114,6 +117,7 @@ export default function FluxoCaixaPage() {
     setRecFim("");
     setRecMaxOcc("");
     setValorError("");
+    setPendingFiles([]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -175,6 +179,11 @@ export default function FluxoCaixaPage() {
     if (error) {
       toast.error("Erro ao salvar: " + error.message);
     } else {
+      // Upload pending files
+      if (inserted && pendingFiles.length > 0) {
+        const uploaded = await uploadPendingAttachments(pendingFiles, inserted.id, user!.id);
+        if (uploaded > 0) toast.success(`${uploaded} anexo(s) enviado(s)`);
+      }
       toast.success(isRecorrente ? "Transação recorrente criada!" : "Transação registrada!");
       setShowForm(false);
       setForm({ tipo: "Saída", valor: "", data: new Date().toISOString().split("T")[0], categoria: "Material", descricao: "", forma_pagamento: "PIX", observacoes: "", conta_id: "" });
@@ -186,6 +195,7 @@ export default function FluxoCaixaPage() {
   const totalEntradas = transacoes.filter(t => t.tipo === "Entrada").reduce((s, t) => s + Number(t.valor), 0);
   const totalSaidas = transacoes.filter(t => t.tipo === "Saída").reduce((s, t) => s + Number(t.valor), 0);
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const attachmentCounts = useAttachmentCounts(transacoes.map(t => t.id));
 
   const openDetail = (t: TransacaoFull) => {
     setSelectedTransacao(t);
@@ -310,6 +320,18 @@ export default function FluxoCaixaPage() {
                         <span className="flex items-center gap-1.5">
                           {isRecurring && <RefreshCw className="w-3 h-3 text-primary shrink-0" />}
                           {t.descricao || "-"}
+                          {attachmentCounts[t.id] > 0 && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Paperclip className="w-3 h-3 text-muted-foreground shrink-0" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {attachmentCounts[t.id]} anexo(s)
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -454,6 +476,9 @@ export default function FluxoCaixaPage() {
               <Label className="text-xs text-muted-foreground">Observações</Label>
               <Textarea value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} rows={2} className="mt-1" />
             </div>
+
+            {/* Attachments */}
+            <AttachmentUploadArea pendingFiles={pendingFiles} onPendingChange={setPendingFiles} />
             <Button type="submit" disabled={saving} className="w-full">
               {saving ? "Salvando..." : isRecorrente ? "Criar Recorrente" : "Registrar Transação"}
             </Button>

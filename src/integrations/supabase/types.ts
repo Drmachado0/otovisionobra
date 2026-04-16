@@ -2109,6 +2109,39 @@ export type Database = {
           },
         ]
       }
+      obra_transacao_anexos: {
+        Row: {
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          transaction_id: string
+          uploaded_at: string
+          uploaded_by: string
+        }
+        Insert: {
+          file_name: string
+          file_path: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          transaction_id: string
+          uploaded_at?: string
+          uploaded_by: string
+        }
+        Update: {
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          transaction_id?: string
+          uploaded_at?: string
+          uploaded_by?: string
+        }
+        Relationships: []
+      }
       obra_transacoes_fluxo: {
         Row: {
           categoria: string
