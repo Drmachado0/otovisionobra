@@ -576,7 +576,20 @@ export default function RelatoriosPage() {
         </TabsContent>
 
         <TabsContent value="etapas" className="space-y-3 mt-4">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+              const totalPrev = etapas.reduce((s, e) => s + Number(e.custo_previsto), 0);
+              const totalReal = etapas.reduce((s, e) => s + Number(e.custo_real), 0);
+              const progresso = etapas.length ? (etapas.reduce((s, e) => s + Number(e.percentual_conclusao), 0) / etapas.length).toFixed(1) + "%" : "0%";
+              exportPDF("Etapas",
+                [["Custo Previsto", formatCurrency(totalPrev)], ["Custo Real", formatCurrency(totalReal)], ["Progresso Médio", progresso]],
+                [{ key: "nome", label: "Etapa" }, { key: "status", label: "Status" }, { key: "percentual_conclusao", label: "Progresso %" }, { key: "custo_previsto", label: "Custo Previsto", align: "right" }, { key: "custo_real", label: "Custo Real", align: "right" }, { key: "inicio_previsto", label: "Início" }, { key: "fim_previsto", label: "Fim" }],
+                etapas,
+                { custo_previsto: (v: number) => formatCurrency(Number(v)), custo_real: (v: number) => formatCurrency(Number(v)), percentual_conclusao: (v: number) => `${v}%`, inicio_previsto: (v: string) => formatDate(v), fim_previsto: (v: string) => formatDate(v) },
+              );
+            }}>
+              <FileText className="w-4 h-4" /> PDF
+            </Button>
             <Button variant="outline" size="sm" className="gap-2" onClick={() =>
               exportCSV(etapas, "relatorio-etapas", [
                 { key: "nome", label: "Etapa" }, { key: "status", label: "Status" },
