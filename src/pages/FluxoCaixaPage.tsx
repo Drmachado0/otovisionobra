@@ -195,6 +195,7 @@ export default function FluxoCaixaPage() {
   const totalEntradas = transacoes.filter(t => t.tipo === "Entrada").reduce((s, t) => s + Number(t.valor), 0);
   const totalSaidas = transacoes.filter(t => t.tipo === "Saída").reduce((s, t) => s + Number(t.valor), 0);
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const attachmentCounts = useAttachmentCounts(transacoes.map(t => t.id));
 
   const openDetail = (t: TransacaoFull) => {
     setSelectedTransacao(t);
