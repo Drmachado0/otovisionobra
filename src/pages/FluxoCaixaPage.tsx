@@ -79,6 +79,8 @@ export default function FluxoCaixaPage() {
       query = query.eq("tipo", filterTipo);
     }
     if (filterCategoria !== "todos") query = query.eq("categoria", filterCategoria);
+    if (filterConta === "sem_conta") query = query.or("conta_id.is.null,conta_id.eq.");
+    else if (filterConta !== "todas") query = query.eq("conta_id", filterConta);
     if (dateFrom) query = query.gte("data", dateFrom);
     if (dateTo) query = query.lte("data", dateTo);
     if (search) query = query.or(`descricao.ilike.%${search}%,categoria.ilike.%${search}%`);
