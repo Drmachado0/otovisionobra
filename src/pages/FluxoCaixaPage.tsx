@@ -308,7 +308,7 @@ export default function FluxoCaixaPage() {
               </div>
               <div>
                 <Label className="text-xs text-muted-foreground">Valor (R$)</Label>
-                <Input type="number" step="0.01" min="0.01" value={form.valor} onChange={e => { setForm(f => ({ ...f, valor: e.target.value })); setValorError(""); }} placeholder="0,00" className={`mt-1 ${valorError ? "border-destructive ring-destructive" : ""}`} />
+                <Input type="number" step="0.01" value={form.valor} onChange={e => { setForm(f => ({ ...f, valor: e.target.value })); setValorError(""); }} placeholder="0,00" className={`mt-1 ${valorError ? "border-destructive ring-destructive" : ""}`} />
                 {valorError && <p className="text-xs text-destructive mt-1">{valorError}</p>}
               </div>
             </div>
