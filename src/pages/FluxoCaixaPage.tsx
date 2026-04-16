@@ -93,7 +93,7 @@ export default function FluxoCaixaPage() {
     if (data) setTransacoes(data as TransacaoFull[]);
     if (count !== null) setTotalCount(count);
     setLoading(false);
-  }, [page, filterTipo, filterCategoria, dateFrom, dateTo, search]);
+  }, [page, filterTipo, filterCategoria, filterConta, dateFrom, dateTo, search]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
